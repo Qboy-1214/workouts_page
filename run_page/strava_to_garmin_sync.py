@@ -93,8 +93,11 @@ if __name__ == "__main__":
             password=password,
         )
     else:
-        raise ValueError("Must provide either STRAVA_JWT or both STRAVA_EMAIL and STRAVA_PASSWORD")
+        raise ValueError(
+            "Must provide either STRAVA_JWT or both STRAVA_EMAIL and STRAVA_PASSWORD"
+        )
 
+  
     garmin_auth_domain = "CN" if options.is_cn else ""
 
     try:
