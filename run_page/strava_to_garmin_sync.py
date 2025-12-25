@@ -71,25 +71,25 @@ if __name__ == "__main__":
         options.strava_refresh_token,
     )
     # 替换原来的 WebClient 初始化代码
-jwt = options.strava_jwt if hasattr(options, 'strava_jwt') and options.strava_jwt else ""
-email = options.strava_email if hasattr(options, 'strava_email') else ""
-password = options.strava_password if hasattr(options, 'strava_password') else ""
+    jwt = options.strava_jwt if hasattr(options, 'strava_jwt') and options.strava_jwt else ""
+    email = options.strava_email if hasattr(options, 'strava_email') else ""
+    password = options.strava_password if hasattr(options, 'strava_password') else ""
 
-if jwt:
-    print("Using JWT for Strava web login (passwordless mode)")
-    strava_web_client = WebClient(
-        access_token=strava_client.access_token,
-        jwt=jwt,
-    )
-elif email and password:
-    print("Using email + password for Strava web login")
-    strava_web_client = WebClient(
-        access_token=strava_client.access_token,
-        email=email,
-        password=password,
-    )
-else:
-    raise ValueError("Must provide either STRAVA_JWT or both STRAVA_EMAIL and STRAVA_PASSWORD")
+    if jwt:
+        print("Using JWT for Strava web login (passwordless mode)")
+        strava_web_client = WebClient(
+            access_token=strava_client.access_token,
+            jwt=jwt,
+        )
+    elif email and password:
+        print("Using email + password for Strava web login")
+        strava_web_client = WebClient(
+            access_token=strava_client.access_token,
+            email=email,
+            password=password,
+        )
+    else:
+        raise ValueError("Must provide either STRAVA_JWT or both STRAVA_EMAIL and STRAVA_PASSWORD")
 
     garmin_auth_domain = "CN" if options.is_cn else ""
 
