@@ -2,6 +2,9 @@ name: Test Data Sync
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - test
 
 env:
   RUN_TYPE: strava
