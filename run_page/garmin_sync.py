@@ -425,25 +425,47 @@ class Garmin:
                                 print(f"[DEBUG] upload creationDate: {upload_time}")
                                 if upload_time:
                                     # Get recent activities to find the one we just uploaded
-                                    # Use date-based search to find activities from the upload day
+                                    # Use date-based search with retry since new uploads need time to process
                                     print("[DEBUG] Fetching activities by date to match...")
                                     try:
                                         # Extract date from creationDate (format: "2026-04-22 14:58:27.716 GMT")
                                         upload_date = upload_time.split(' ')[0] if upload_time else None
                                         print(f"[DEBUG] Searching for activities on date: {upload_date}")
+                                        
+                                        activity_id = None
+                                        search_dates = [upload_date]
+                                        # Also check previous day in case of timezone difference
                                         if upload_date:
-                                            # Get activities for the upload date
-                                            recent = self._client.get_activities_by_date(upload_date, sortorder="desc")
-                                            print(f"[DEBUG] Got {len(recent)} activities for {upload_date}")
-                                            for act in recent:
-                                                act_start_time = act.get('startTimeGMT') or act.get('startTime')
-                                                print(f"[DEBUG] Checking activity: {act.get('activityId')}, startTime: {act_start_time}")
-                                                if act_start_time == upload_time:
-                                                    activity_id = act.get('activityId')
-                                                    print(f"[DEBUG] Found matching activity by time: {activity_id}")
-                                                    break
+                                            from datetime import datetime, timedelta
+                                            prev_date = (datetime.strptime(upload_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+                                            search_dates.append(prev_date)
+                                        
+                                        # Retry with delays to wait for processing
+                                        for retry in range(3):
+                                            if retry > 0:
+                                                wait_time = 5 * retry
+                                                print(f"[DEBUG] Retry {retry}, waiting {wait_time}s for activity to process...")
+                                                time.sleep(wait_time)
+                                            
+                                            for search_date in search_dates:
+                                                try:
+                                                    recent = self._client.get_activities_by_date(search_date, sortorder="desc")
+                                                    print(f"[DEBUG] Got {len(recent)} activities for {search_date}")
+                                                    for act in recent:
+                                                        act_start_time = act.get('startTimeGMT') or act.get('startTime')
+                                                        print(f"[DEBUG] Checking activity: {act.get('activityId')}, startTime: {act_start_time}")
+                                                        if act_start_time == upload_time:
+                                                            activity_id = act.get('activityId')
+                                                            print(f"[DEBUG] Found matching activity by time: {activity_id}")
+                                                            break
+                                                    if activity_id:
+                                                        break
+                                                except Exception as date_e:
+                                                    print(f"[DEBUG] Error getting activities for {search_date}: {date_e}")
+                                            if activity_id:
+                                                break
                                     except Exception as get_e:
-                                        print(f"[DEBUG] Failed to get activities by date: {get_e}")
+                                        print(f"[DEBUG] Failed to get activities: {get_e}")
                                         import traceback
                                         traceback.print_exc()
                             
