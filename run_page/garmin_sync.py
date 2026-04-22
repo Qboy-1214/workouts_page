@@ -425,16 +425,27 @@ class Garmin:
                                 print(f"[DEBUG] upload creationDate: {upload_time}")
                                 if upload_time:
                                     # Get recent activities to find the one we just uploaded
-                                    print("[DEBUG] Fetching recent activities to match by time...")
-                                    recent = self._client.get_activities(0, 10)
-                                    print(f"[DEBUG] Got {len(recent)} recent activities")
-                                    for act in recent:
-                                        act_start_time = act.get('startTimeGMT') or act.get('startTime')
-                                        print(f"[DEBUG] Checking activity: {act.get('activityId')}, startTime: {act_start_time}")
-                                        if act_start_time == upload_time:
-                                            activity_id = act.get('activityId')
-                                            print(f"[DEBUG] Found matching activity by time: {activity_id}")
-                                            break
+                                    # Use date-based search to find activities from the upload day
+                                    print("[DEBUG] Fetching activities by date to match...")
+                                    try:
+                                        # Extract date from creationDate (format: "2026-04-22 14:58:27.716 GMT")
+                                        upload_date = upload_time.split(' ')[0] if upload_time else None
+                                        print(f"[DEBUG] Searching for activities on date: {upload_date}")
+                                        if upload_date:
+                                            # Get activities for the upload date
+                                            recent = self._client.get_activities_by_date(upload_date, sortorder="desc")
+                                            print(f"[DEBUG] Got {len(recent)} activities for {upload_date}")
+                                            for act in recent:
+                                                act_start_time = act.get('startTimeGMT') or act.get('startTime')
+                                                print(f"[DEBUG] Checking activity: {act.get('activityId')}, startTime: {act_start_time}")
+                                                if act_start_time == upload_time:
+                                                    activity_id = act.get('activityId')
+                                                    print(f"[DEBUG] Found matching activity by time: {activity_id}")
+                                                    break
+                                    except Exception as get_e:
+                                        print(f"[DEBUG] Failed to get activities by date: {get_e}")
+                                        import traceback
+                                        traceback.print_exc()
                             
                             if activity_id:
                                 print(f"Setting activity type to {garmin_sport} for activity {activity_id}")
