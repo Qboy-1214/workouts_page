@@ -110,6 +110,7 @@ STRAVA_TO_GARMIN_SPORT = {
     "Ultimate": "ultimate_disc",
     # Racket sports
     "Tennis": "tennis_v2",
+    "VirtualTennis": "tennis_v2",  # Virtual tennis
     "Pickleball": "pickleball",
     "Squash": "squash",
     "Racquetball": "racquetball",
@@ -137,10 +138,12 @@ STRAVA_TO_GARMIN_SPORT = {
     "Meditation": "meditation",
     "Cross Country Ski": "cross_country_skiing_ws",
     "BMX": "bmx",
+    # Fallback mapping for common sport keywords
+    "Virtual": "other",  # Generic virtual activities
 }
 
 
-def fix_tcx_sport_type(file_path):
+def fix_tcx_sport_type(file_path, strava_sport_type=None):
     """
     Fix TCX file Sport field to Garmin compatible format.
     Strava uses formats like 'Run', 'Hike', 'Swim' which Garmin may not recognize.
@@ -164,11 +167,25 @@ def fix_tcx_sport_type(file_path):
         modified = False
         for activity in activities:
             sport_attr = activity.get("Sport")
-            if sport_attr and sport_attr in STRAVA_TO_GARMIN_SPORT:
-                new_sport = STRAVA_TO_GARMIN_SPORT[sport_attr]
-                print(f"Fixing TCX sport: {sport_attr} -> {new_sport}")
+            
+            # Determine which sport type to use (prefer Strava type if provided)
+            sport_to_convert = strava_sport_type if strava_sport_type else sport_attr
+            
+            print(f"[fix_tcx_sport_type] TCX file Sport: '{sport_attr}', Strava type: '{strava_sport_type}'")
+            
+            if sport_to_convert and sport_to_convert in STRAVA_TO_GARMIN_SPORT:
+                new_sport = STRAVA_TO_GARMIN_SPORT[sport_to_convert]
+                print(f"Fixing TCX sport: {sport_to_convert} -> {new_sport}")
                 activity.set("Sport", new_sport)
                 modified = True
+            elif sport_attr:
+                # Try partial match if exact match fails
+                for key, value in STRAVA_TO_GARMIN_SPORT.items():
+                    if key.lower() in sport_attr.lower() or sport_attr.lower() in key.lower():
+                        print(f"Partial match - Fixing TCX sport: {sport_attr} -> {value}")
+                        activity.set("Sport", value)
+                        modified = True
+                        break
 
         if modified:
             tree.write(
@@ -348,7 +365,8 @@ class Garmin:
             # Fix TCX sport type before upload
             ext = os.path.splitext(data.filename)[-1].lower()
             if ext in [".tcx", ".TCX"]:
-                fix_tcx_sport_type(data.filename)
+                strava_type = getattr(data, 'strava_sport_type', None)
+                fix_tcx_sport_type(data.filename, strava_type)
 
             with open(data.filename, "rb") as f:
                 file_body = process_garmin_data(f, use_fake_garmin_device)

@@ -41,12 +41,14 @@ async def upload_to_activities(
 
     # strava rate limit
     for i in sorted(strava_activities, key=lambda i: int(i.id)):
-        print(f"[download] Getting activity data for activity ID: {i.id}")
+        print(f"[download] Getting activity data for activity ID: {i.id}, type: {i.type}")
         try:
             data = strava_web_client.get_activity_data(
                 i.id, fmt=format, json_fmt=DataFormat.TCX
             )
-            print(f"[download] Got activity data: {data.filename}")
+            # Attach the Strava activity type to the data object for sport type conversion
+            data.strava_sport_type = getattr(i, 'type', None) or getattr(i, 'sport_type', 'other')
+            print(f"[download] Got activity data: {data.filename}, sport type: {data.strava_sport_type}")
             files_list.append(data)
         except Exception as ex:
             print("get strava data error: ", ex)
