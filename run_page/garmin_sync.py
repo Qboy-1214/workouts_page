@@ -471,12 +471,6 @@ class Garmin:
                                         print(f"[DEBUG] Failed to get activities: {get_e}")
                                         import traceback
                                         traceback.print_exc()
-                                            if activity_id:
-                                                break
-                                    except Exception as get_e:
-                                        print(f"[DEBUG] Failed to get activities: {get_e}")
-                                        import traceback
-                                        traceback.print_exc()
                             
                             if activity_id:
                                 print(f"Setting activity type to {garmin_sport} for activity {activity_id}")
