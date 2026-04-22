@@ -366,18 +366,23 @@ class Garmin:
             use_fake_garmin_device,
         )
         for item in datas:
-            # Unpack data, sport type and activity start time (wrapped as tuple in strava_to_garmin_sync.py)
-            # Format: (data, sport_type, activity_start_time) or (data, sport_type) or just data
-            if isinstance(item, tuple) and len(item) == 3:
+            # Unpack data, sport type, activity name, and start time (wrapped as tuple in strava_to_garmin_sync.py)
+            # Format: (data, sport_type, activity_name, activity_start_time) or (data, sport_type, activity_start_time) or (data, sport_type) or just data
+            if isinstance(item, tuple) and len(item) == 4:
+                data, strava_sport_type, activity_name, activity_start_time = item
+            elif isinstance(item, tuple) and len(item) == 3:
                 data, strava_sport_type, activity_start_time = item
+                activity_name = None
             elif isinstance(item, tuple) and len(item) == 2:
                 data, strava_sport_type = item
                 activity_start_time = None
+                activity_name = None
             else:
                 data = item
                 strava_sport_type = None
                 activity_start_time = None
-            print(f"[DEBUG] Processing activity: sport_type={strava_sport_type}, start_time={activity_start_time}")
+                activity_name = None
+            print(f"[DEBUG] Processing activity: sport_type={strava_sport_type}, name={activity_name}, start_time={activity_start_time}")
             with open(data.filename, "wb") as f:
                 for chunk in data.content:
                     f.write(chunk)
@@ -569,6 +574,18 @@ class Garmin:
                                         print(f"[DEBUG] API call failed: {api_e}")
                                 else:
                                     print(f"[ERROR] Could not find type info for '{garmin_sport}' in Garmin activity types")
+                                
+                                # Set activity name from Strava if provided
+                                if activity_name:
+                                    try:
+                                        name_result = self._client.set_activity_name(
+                                            activity_id=str(activity_id),
+                                            title=activity_name
+                                        )
+                                        print(f"[DEBUG] set_activity_name result: {name_result}")
+                                        print(f"Activity name set to: {activity_name}")
+                                    except Exception as name_e:
+                                        print(f"[DEBUG] set_activity_name failed: {name_e}")
                         except Exception as type_e:
                             print(f"Failed to set activity type: {type_e}")
                             import traceback
