@@ -48,10 +48,10 @@ async def upload_to_activities(
             data = strava_web_client.get_activity_data(
                 i.id, fmt=format, json_fmt=DataFormat.TCX
             )
-            # Attach the Strava activity type to the data object for sport type conversion
-            data.strava_sport_type = sport_type
-            print(f"[download] Got activity data: {data.filename}, sport type: {data.strava_sport_type}")
-            files_list.append(data)
+            # Wrap the data with sport type info (ExportFile doesn't support dynamic attributes)
+            wrapped_data = (data, sport_type)
+            print(f"[download] Got activity data: {data.filename}, sport type: {sport_type}")
+            files_list.append(wrapped_data)
         except Exception as ex:
             print("get strava data error: ", ex)
     print(f"[download] Downloaded {len(files_list)} files, starting upload...")

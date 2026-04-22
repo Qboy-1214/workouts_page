@@ -357,7 +357,13 @@ class Garmin:
             "start upload activities to garmin!, use_fake_garmin_device:",
             use_fake_garmin_device,
         )
-        for data in datas:
+        for item in datas:
+            # Unpack data and sport type (wrapped as tuple in strava_to_garmin_sync.py)
+            if isinstance(item, tuple) and len(item) == 2:
+                data, strava_sport_type = item
+            else:
+                data = item
+                strava_sport_type = None
             with open(data.filename, "wb") as f:
                 for chunk in data.content:
                     f.write(chunk)
@@ -365,8 +371,7 @@ class Garmin:
             # Fix TCX sport type before upload
             ext = os.path.splitext(data.filename)[-1].lower()
             if ext in [".tcx", ".TCX"]:
-                strava_type = getattr(data, 'strava_sport_type', None)
-                fix_tcx_sport_type(data.filename, strava_type)
+                fix_tcx_sport_type(data.filename, strava_sport_type)
 
             with open(data.filename, "rb") as f:
                 file_body = process_garmin_data(f, use_fake_garmin_device)
