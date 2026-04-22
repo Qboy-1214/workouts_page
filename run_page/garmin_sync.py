@@ -154,11 +154,8 @@ def fix_tcx_sport_type(file_path, strava_sport_type=None):
         from lxml import etree
         import urllib.parse
 
-        # Decode URL-encoded characters in filename
-        decoded_path = urllib.parse.unquote(file_path)
-        if decoded_path != file_path:
-            print(f"[fix_tcx_sport_type] Decoded filename: {decoded_path}")
-            file_path = decoded_path
+        # Use the original file path (URL-encoded) - do NOT decode
+        print(f"[fix_tcx_sport_type] Processing file: {file_path}")
 
         tree = etree.parse(file_path)
         root = tree.getroot()
