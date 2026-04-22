@@ -428,49 +428,49 @@ class Garmin:
                                 if upload_time:
                                     # Get recent activities to find the one we just uploaded
                                     # Use date-based search with retry since new uploads need time to process
-                                    print("[DEBUG] Fetching activities by date to match...")
+                                    print("[DEBUG] Fetching activities to match...")
                                     try:
                                         # Extract date from creationDate (format: "2026-04-22 14:58:27.716 GMT")
                                         upload_date = upload_time.split(' ')[0] if upload_time else None
-                                        print(f"[DEBUG] Searching for activities on date: {upload_date}")
+                                        print(f"[DEBUG] Upload date: {upload_date}, time: {upload_time}")
                                         
                                         activity_id = None
-                                        search_dates = [upload_date]
-                                        # Also check previous day in case of timezone difference
-                                        if upload_date:
-                                            from datetime import datetime, timedelta
-                                            prev_date = (datetime.strptime(upload_date, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
-                                            search_dates.append(prev_date)
                                         
                                         # Retry with delays to wait for processing
-                                        for retry in range(3):
+                                        for retry in range(4):
                                             if retry > 0:
-                                                wait_time = 5 * retry
+                                                wait_time = 10 * retry
                                                 print(f"[DEBUG] Retry {retry}, waiting {wait_time}s for activity to process...")
                                                 time.sleep(wait_time)
                                             
-                                            for search_date in search_dates:
-                                                try:
-                                                    recent = self._client.get_activities_by_date(search_date, sortorder="desc")
-                                                    print(f"[DEBUG] Got {len(recent)} activities for {search_date}")
-                                                    for act in recent:
-                                                        act_start_time = act.get('startTimeGMT') or act.get('startTime')
-                                                        act_file_size = act.get('fileSize')
-                                                        print(f"[DEBUG] Checking activity: {act.get('activityId')}, startTime: {act_start_time}, fileSize: {act_file_size}")
-                                                        # Match by creation time (if available) or file size
-                                                        if act_start_time == upload_time:
-                                                            activity_id = act.get('activityId')
-                                                            print(f"[DEBUG] Found matching activity by time: {activity_id}")
-                                                            break
-                                                        elif upload_file_size and act_file_size and act_file_size == upload_file_size:
-                                                            # Fallback: match by file size
-                                                            activity_id = act.get('activityId')
-                                                            print(f"[DEBUG] Found matching activity by file size: {activity_id}")
-                                                            break
-                                                    if activity_id:
+                                            try:
+                                                # First try get_activities with larger limit
+                                                recent = self._client.get_activities(0, 100)
+                                                print(f"[DEBUG] Got {len(recent)} activities from get_activities(0, 100)")
+                                                
+                                                for act in recent:
+                                                    # Get all relevant fields for debugging
+                                                    act_id = act.get('activityId')
+                                                    act_start = act.get('startTimeGMT') or act.get('startTime')
+                                                    act_upload_time = act.get('uploadTime') or act.get('uploadedTime')
+                                                    act_title = act.get('activityName') or act.get('title')
+                                                    print(f"[DEBUG] Activity: {act_id}, startTime: {act_start}, uploadTime: {act_upload_time}, title: {act_title}")
+                                                    
+                                                    # Match by startTime == upload_time (exact match)
+                                                    if act_start and act_start == upload_time:
+                                                        activity_id = act_id
+                                                        print(f"[DEBUG] Found matching activity by startTime: {activity_id}")
                                                         break
-                                                except Exception as date_e:
-                                                    print(f"[DEBUG] Error getting activities for {search_date}: {date_e}")
+                                                
+                                                if activity_id:
+                                                    break
+                                            except Exception as get_e:
+                                                print(f"[DEBUG] Error with get_activities: {get_e}")
+                                                
+                                    except Exception as get_e:
+                                        print(f"[DEBUG] Failed to get activities: {get_e}")
+                                        import traceback
+                                        traceback.print_exc()
                                             if activity_id:
                                                 break
                                     except Exception as get_e:
