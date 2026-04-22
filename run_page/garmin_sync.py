@@ -405,44 +405,45 @@ class Garmin:
                     print("garmin upload success: ", result)
                     
                     # Set correct activity type after upload
-                    print(f"[DEBUG] strava_sport_type: {strava_sport_type}, in STRAVA_TO_GARMIN_SPORT: {strava_sport_type in STRAVA_TO_GARMIN_SPORT if strava_sport_type else False}")
                     if strava_sport_type and strava_sport_type in STRAVA_TO_GARMIN_SPORT:
                         garmin_sport = STRAVA_TO_GARMIN_SPORT[strava_sport_type]
-                        print(f"[DEBUG] garmin_sport: {garmin_sport}")
                         # Get activity ID from response
                         try:
-                            import json
                             resp_data = result.json() if hasattr(result, 'json') else result
-                            print(f"[DEBUG] resp_data: {resp_data}")
                             detailed = resp_data.get('detailedImportResult', {}) if isinstance(resp_data, dict) else {}
-                            print(f"[DEBUG] detailed: {detailed}")
                             successes = detailed.get('successes', []) if isinstance(detailed, dict) else []
-                            print(f"[DEBUG] successes: {successes}")
+                            
+                            activity_id = None
                             if successes:
                                 activity_id = successes[0].get('internalId') or successes[0].get('activityId')
-                                print(f"[DEBUG] activity_id: {activity_id}")
-                                if activity_id:
-                                    print(f"Setting activity type to {garmin_sport} for activity {activity_id}")
-                                    # Get activity types to find type_id and parent_type_id
-                                    activity_types = self._client.get_activity_types()
-                                    sport_type_info = next((t for t in activity_types if t.get('typeKey') == garmin_sport), None)
-                                    print(f"[DEBUG] sport_type_info: {sport_type_info}")
-                                    if sport_type_info:
-                                        self._client.set_activity_type(
-                                            activity_id=str(activity_id),
-                                            type_id=sport_type_info.get('typeId'),
-                                            type_key=garmin_sport,
-                                            parent_type_id=sport_type_info.get('parentTypeId')
-                                        )
-                                        print(f"Activity type set to {garmin_sport}")
-                                    else:
-                                        print(f"Could not find type info for {garmin_sport}")
                             else:
-                                print("[DEBUG] No successes in response, checking uploadId...")
-                                # Try to get activity ID from uploadId
+                                # Try to find activity by uploadId from recent activities
                                 upload_id = detailed.get('uploadId') if isinstance(detailed, dict) else None
                                 if upload_id:
-                                    print(f"[DEBUG] Found uploadId: {upload_id}")
+                                    # Get recent activities to find the one we just uploaded
+                                    recent = self._client.get_activities(0, 10)
+                                    for act in recent:
+                                        # Match by uploadId or creation time
+                                        act_upload_id = act.get('uploadId') or act.get('activityId')
+                                        if str(act_upload_id) == str(upload_id):
+                                            activity_id = act.get('activityId')
+                                            break
+                            
+                            if activity_id:
+                                print(f"Setting activity type to {garmin_sport} for activity {activity_id}")
+                                # Get activity types to find type_id and parent_type_id
+                                activity_types = self._client.get_activity_types()
+                                sport_type_info = next((t for t in activity_types if t.get('typeKey') == garmin_sport), None)
+                                if sport_type_info:
+                                    self._client.set_activity_type(
+                                        activity_id=str(activity_id),
+                                        type_id=sport_type_info.get('typeId'),
+                                        type_key=garmin_sport,
+                                        parent_type_id=sport_type_info.get('parentTypeId')
+                                    )
+                                    print(f"Activity type set to {garmin_sport}")
+                                else:
+                                    print(f"Could not find type info for {garmin_sport}")
                         except Exception as type_e:
                             print(f"Failed to set activity type: {type_e}")
                             import traceback
