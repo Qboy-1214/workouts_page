@@ -482,14 +482,21 @@ class Garmin:
                                 print(f"Setting activity type to {garmin_sport} for activity {activity_id}")
                                 # Get activity types to find type_id and parent_type_id
                                 activity_types = self._client.get_activity_types()
+                                print(f"[DEBUG] Total activity types: {len(activity_types)}")
+                                # Find all types that contain our sport
+                                matching_types = [t for t in activity_types if garmin_sport in str(t.get('typeKey', '')).lower()]
+                                print(f"[DEBUG] Matching types for '{garmin_sport}': {matching_types}")
+                                
                                 sport_type_info = next((t for t in activity_types if t.get('typeKey') == garmin_sport), None)
                                 if sport_type_info:
-                                    self._client.set_activity_type(
+                                    print(f"[DEBUG] Found type info: typeId={sport_type_info.get('typeId')}, parentTypeId={sport_type_info.get('parentTypeId')}")
+                                    result = self._client.set_activity_type(
                                         activity_id=str(activity_id),
                                         type_id=sport_type_info.get('typeId'),
                                         type_key=garmin_sport,
                                         parent_type_id=sport_type_info.get('parentTypeId')
                                     )
+                                    print(f"[DEBUG] set_activity_type result: {result}")
                                     print(f"Activity type set to {garmin_sport}")
                                 else:
                                     print(f"Could not find type info for {garmin_sport}")
