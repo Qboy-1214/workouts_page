@@ -43,17 +43,23 @@ async def upload_to_activities(
     for i in sorted(strava_activities, key=lambda i: int(i.id)):
         # Extract sport type from sport_type field (contains actual sport like Squash, Soccer)
         # Fall back to type if sport_type not available
-        if hasattr(i, 'sport_type') and i.sport_type:
-            sport_type = i.sport_type.root if hasattr(i.sport_type, 'root') else str(i.sport_type)
-        elif hasattr(i.type, 'root'):
+        if hasattr(i, "sport_type") and i.sport_type:
+            sport_type = (
+                i.sport_type.root
+                if hasattr(i.sport_type, "root")
+                else str(i.sport_type)
+            )
+        elif hasattr(i.type, "root"):
             sport_type = i.type.root
         else:
-            sport_type = str(i.type) if i.type else 'other'
+            sport_type = str(i.type) if i.type else "other"
         # Extract activity name from Strava
-        activity_name = i.name if hasattr(i, 'name') and i.name else None
+        activity_name = i.name if hasattr(i, "name") and i.name else None
         # Extract activity start time (for matching after upload)
         activity_start_time = i.start_date or i.start_date_local or None
-        print(f"[download] Getting activity data for activity ID: {i.id}, sport_type: {sport_type}, name: {activity_name}, start: {activity_start_time}")
+        print(
+            f"[download] Getting activity data for activity ID: {i.id}, sport_type: {sport_type}, name: {activity_name}, start: {activity_start_time}"
+        )
         try:
             data = strava_web_client.get_activity_data(
                 i.id, fmt=format, json_fmt=DataFormat.TCX
@@ -61,7 +67,9 @@ async def upload_to_activities(
             # Wrap the data with sport type, activity name, and start time
             # Format: (data, sport_type, activity_name, activity_start_time)
             wrapped_data = (data, sport_type, activity_name, activity_start_time)
-            print(f"[download] Got activity data: {data.filename}, sport_type: {sport_type}, name: {activity_name}, start time: {activity_start_time}")
+            print(
+                f"[download] Got activity data: {data.filename}, sport_type: {sport_type}, name: {activity_name}, start time: {activity_start_time}"
+            )
             files_list.append(wrapped_data)
         except Exception as ex:
             print("get strava data error: ", ex)
