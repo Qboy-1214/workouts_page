@@ -606,7 +606,6 @@ class Garmin:
                     res = await self.req.post(
                         self.upload_url, files=files, headers=self.headers
                     )
-                    os.remove(data.filename)
                 except Exception as e:
                     print("garmin upload failed: ", e)
                     continue
@@ -615,6 +614,13 @@ class Garmin:
                     print("garmin upload success: ", resp)
                 except Exception as e:
                     print("garmin upload failed: ", e)
+                    continue
+                finally:
+                    try:
+                        if os.path.exists(data.filename):
+                            os.remove(data.filename)
+                    except:
+                        pass
         if not self._use_garminconnect:
             await self.req.aclose()
 
