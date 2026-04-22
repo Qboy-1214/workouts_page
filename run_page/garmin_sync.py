@@ -138,7 +138,6 @@ STRAVA_TO_GARMIN_SPORT = {
     "Inline Skating": "inline_skating",
     "Skateboarding": "other",
     "Meditation": "meditation",
-    "Cross Country Ski": "cross_country_skiing_ws",
     "BMX": "bmx",
     # Fallback mapping for common sport keywords
     "Virtual": "other",  # Generic virtual activities
@@ -155,7 +154,6 @@ def fix_tcx_sport_type(file_path, strava_sport_type=None):
 
     try:
         from lxml import etree
-        import urllib.parse
 
         # Use the original file path (URL-encoded) - do NOT decode
         print(f"[fix_tcx_sport_type] Processing file: {file_path}")
@@ -724,7 +722,7 @@ class Garmin:
                     try:
                         if os.path.exists(tmp_path):
                             os.remove(tmp_path)
-                    except:
+                    except Exception:
                         pass
             else:
                 # CN: use httpx
@@ -746,7 +744,7 @@ class Garmin:
                     try:
                         if os.path.exists(data.filename):
                             os.remove(data.filename)
-                    except:
+                    except Exception:
                         pass
 
                 # CN: Set activity type and name after upload (same logic as COM, but via httpx)
