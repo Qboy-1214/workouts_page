@@ -419,21 +419,21 @@ class Garmin:
                             if successes:
                                 activity_id = successes[0].get('internalId') or successes[0].get('activityId')
                             else:
-                                # Try to find activity by uploadId from recent activities
-                                upload_id = detailed.get('uploadId') if isinstance(detailed, dict) else None
-                                print(f"[DEBUG] upload_id from response: {upload_id}")
-                                if upload_id:
+                                # Try to find activity by creation time from recent activities
+                                # The uploadId from response doesn't match activityId, so use time-based matching
+                                upload_time = detailed.get('creationDate') if isinstance(detailed, dict) else None
+                                print(f"[DEBUG] upload creationDate: {upload_time}")
+                                if upload_time:
                                     # Get recent activities to find the one we just uploaded
-                                    print("[DEBUG] Fetching recent activities...")
+                                    print("[DEBUG] Fetching recent activities to match by time...")
                                     recent = self._client.get_activities(0, 10)
                                     print(f"[DEBUG] Got {len(recent)} recent activities")
                                     for act in recent:
-                                        # Match by uploadId or creation time
-                                        act_upload_id = act.get('uploadId') or act.get('activityId')
-                                        print(f"[DEBUG] Checking activity: {act.get('activityId')}, uploadId: {act_upload_id}")
-                                        if str(act_upload_id) == str(upload_id):
+                                        act_start_time = act.get('startTimeGMT') or act.get('startTime')
+                                        print(f"[DEBUG] Checking activity: {act.get('activityId')}, startTime: {act_start_time}")
+                                        if act_start_time == upload_time:
                                             activity_id = act.get('activityId')
-                                            print(f"[DEBUG] Found matching activity: {activity_id}")
+                                            print(f"[DEBUG] Found matching activity by time: {activity_id}")
                                             break
                             
                             if activity_id:
