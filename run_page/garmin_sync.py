@@ -54,6 +54,135 @@ GARMIN_CN_URL_DICT = {
 }
 
 
+# Strava to Garmin sport type mapping (Garmin compatible format)
+# Garmin typeKey reference: https://github.com/pe-st/garmin-connect-export/blob/master/json/activityTypes.json
+STRAVA_TO_GARMIN_SPORT = {
+    # Running
+    "Run": "running",
+    "Trail Run": "trail_running",
+    "Street Run": "street_running",
+    "Track Run": "track_running",
+    "Treadmill": "treadmill_running",
+    "Virtual Run": "virtual_run",
+    # Cycling
+    "Ride": "cycling",
+    "Mountain Bike": "mountain_biking",
+    "Road Bike": "road_biking",
+    "EBikeRide": "e_bike_mountain",
+    "VirtualRide": "virtual_ride",
+    "Indoor Ride": "indoor_cycling",
+    "Gravel Ride": "gravel_cycling",
+    "Cyclocross": "cyclocross",
+    # Winter sports
+    "Ski": "resort_skiing",
+    "Backcountry Ski": "backcountry_skiing",
+    "Snowboard": "resort_snowboarding",
+    "Backcountry Snowboard": "backcountry_snowboarding",
+    "Cross Country Ski": "cross_country_skiing_ws",
+    "Snowshoe": "snow_shoe_ws",
+    # Water sports
+    "Swim": "swimming",
+    "Rowing": "rowing_v2",
+    "Kayaking": "kayaking_v2",
+    "Stand Up Paddling": "stand_up_paddleboarding_v2",
+    "Surfing": "surfing_v2",
+    "Windsurfing": "windsufing_v2",
+    "Kite Surfing": "kiteboarding_v2",
+    "Wakeboarding": "wakeboarding_v2",
+    "Wakesurfing": "wakesurfing",
+    "Water Skiing": "waterskiing",
+    # Outdoor
+    "Walk": "walking",
+    "Hike": "hiking",
+    "Rock Climbing": "rock_climbing",
+    # Team sports
+    "Soccer": "soccer",
+    "Football": "american_football",
+    "Basketball": "basketball",
+    "Baseball": "baseball",
+    "Volleyball": "volleyball",
+    "Softball": "softball",
+    "Rugby": "rugby",
+    "Cricket": "cricket",
+    "Ice Hockey": "ice_hockey",
+    "Field Hockey": "field_hockey",
+    "Lacrosse": "lacrosse",
+    "Ultimate": "ultimate_disc",
+    # Racket sports
+    "Tennis": "tennis_v2",
+    "Pickleball": "pickleball",
+    "Squash": "squash",
+    "Racquetball": "racquetball",
+    "Badminton": "badminton",
+    "Table Tennis": "table_tennis",
+    "Paddle Tennis": "platform_tennis",
+    "Padel": "paddelball",
+    # Fitness & Gym
+    "Weightlifting": "strength_training",
+    "Elliptical": "elliptical",
+    "Stair Stepper": "stair_climbing",
+    "Rowing Machine": "indoor_rowing",
+    "Yoga": "yoga",
+    "Pilates": "pilates",
+    "HIIT": "hiit",
+    "Dance": "dance",
+    "Jump Rope": "jump_rope",
+    "Boxing": "boxing",
+    "Martial Arts": "mixed_martial_arts",
+    "Archery": "archery",
+    # Other
+    "Golf": "golf",
+    "Inline Skating": "inline_skating",
+    "Skateboarding": "other",
+    "Meditation": "meditation",
+    "Cross Country Ski": "cross_country_skiing_ws",
+    "BMX": "bmx",
+}
+
+
+def fix_tcx_sport_type(file_path):
+    """
+    Fix TCX file Sport field to Garmin compatible format.
+    Strava uses formats like 'Run', 'Hike', 'Swim' which Garmin may not recognize.
+    This function converts them to Garmin API compatible sport types.
+    """
+    try:
+        from lxml import etree
+
+        tree = etree.parse(file_path)
+        root = tree.getroot()
+
+        # Define namespace
+        ns = {"tcx": "http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd"}
+
+        # Find all Activity elements
+        activities = root.findall(".//tcx:Activity", ns)
+        if not activities:
+            # Try without namespace (some TCX files don't use namespace)
+            activities = root.findall(".//Activity")
+
+        modified = False
+        for activity in activities:
+            sport_attr = activity.get("Sport")
+            if sport_attr and sport_attr in STRAVA_TO_GARMIN_SPORT:
+                new_sport = STRAVA_TO_GARMIN_SPORT[sport_attr]
+                print(f"Fixing TCX sport: {sport_attr} -> {new_sport}")
+                activity.set("Sport", new_sport)
+                modified = True
+
+        if modified:
+            tree.write(
+                file_path,
+                encoding="utf-8",
+                xml_declaration=True,
+                pretty_print=True,
+            )
+            print(f"TCX sport type fixed: {file_path}")
+
+    except Exception as e:
+        print(f"Failed to fix TCX sport type: {e}")
+
+
 class Garmin:
     """
     Garmin client for both COM (garminconnect) and CN (garth) regions.
@@ -199,173 +328,87 @@ class Garmin:
             response.raise_for_status()
             return response.read()
 
-    # Strava to Garmin sport type mapping (Garmin compatible format)
-# Garmin typeKey reference: https://github.com/pe-st/garmin-connect-export/blob/master/json/activityTypes.json
-STRAVA_TO_GARMIN_SPORT = {
-    # Running
-    "Run": "running",
-    "Trail Run": "trail_running",
-    "Street Run": "street_running",
-    "Track Run": "track_running",
-    "Treadmill": "treadmill_running",
-    "Virtual Run": "virtual_run",
-    # Cycling
-    "Ride": "cycling",
-    "Mountain Bike": "mountain_biking",
-    "Road Bike": "road_biking",
-    "EBikeRide": "e_bike_mountain",
-    "VirtualRide": "virtual_ride",
-    "Indoor Ride": "indoor_cycling",
-    "Gravel Ride": "gravel_cycling",
-    "Cyclocross": "cyclocross",
-    # Winter sports
-    "Ski": "resort_skiing",
-    "Backcountry Ski": "backcountry_skiing",
-    "Snowboard": "resort_snowboarding",
-    "Backcountry Snowboard": "backcountry_snowboarding",
-    "Cross Country Ski": "cross_country_skiing_ws",
-    "Snowshoe": "snow_shoe_ws",
-    # Water sports
-    "Swim": "swimming",
-    "Rowing": "rowing_v2",
-    "Kayaking": "kayaking_v2",
-    "Stand Up Paddling": "stand_up_paddleboarding_v2",
-    "Surfing": "surfing_v2",
-    "Windsurfing": "windsufing_v2",
-    "Kite Surfing": "kiteboarding_v2",
-    "Wakeboarding": "wakeboarding_v2",
-    "Wakesurfing": "wakesurfing",
-    "Water Skiing": "waterskiing",
-    # Outdoor
-    "Walk": "walking",
-    "Hike": "hiking",
-    "Rock Climbing": "rock_climbing",
-    # Team sports
-    "Soccer": "soccer",
-    "Football": "american_football",
-    "Basketball": "basketball",
-    "Baseball": "baseball",
-    "Volleyball": "volleyball",
-    "Softball": "softball",
-    "Rugby": "rugby",
-    "Cricket": "cricket",
-    "Ice Hockey": "ice_hockey",
-    "Field Hockey": "field_hockey",
-    "Lacrosse": "lacrosse",
-    "Ultimate": "ultimate_disc",
-    # Racket sports
-    "Tennis": "tennis_v2",
-    "Pickleball": "pickleball",
-    "Squash": "squash",
-    "Racquetball": "racquetball",
-    "Badminton": "badminton",
-    "Table Tennis": "table_tennis",
-    "Paddle Tennis": "platform_tennis",
-    "Padel": "paddelball",
-    # Fitness & Gym
-    "Weightlifting": "strength_training",
-    "Elliptical": "elliptical",
-    "Stair Stepper": "stair_climbing",
-    "Rowing Machine": "indoor_rowing",
-    "Yoga": "yoga",
-    "Pilates": "pilates",
-    "HIIT": "hiit",
-    "Dance": "dance",
-    "Jump Rope": "jump_rope",
-    "Boxing": "boxing",
-    "Martial Arts": "mixed_martial_arts",
-    "Archery": "archery",
-    # Other
-    "Golf": "golf",
-    "Inline Skating": "inline_skating",
-    "Skateboarding": "other",
-    "Meditation": "meditation",
-    "Cross Country Ski": "cross_country_skiing_ws",
-    "BMX": "bmx",
-}
+        async def upload_activities_original_from_strava(
+                self, datas, use_fake_garmin_device=False
+            ):
+                if self._client is None:
+                    print(
+                        "[Garmin.upload_activities_original_from_strava] No garmin client, skipping upload"
+                    )
+                    return
+                print(
+                    "start upload activities to garmin!, use_fake_garmin_device:",
+                    use_fake_garmin_device,
+                )
+                for data in datas:
+                    with open(data.filename, "wb") as f:
+                        for chunk in data.content:
+                            f.write(chunk)
 
+                    # Fix TCX sport type before upload
+                    ext = os.path.splitext(data.filename)[-1].lower()
+                    if ext in [".tcx", ".TCX"]:
+                        fix_tcx_sport_type(data.filename)
 
-def fix_tcx_sport_type(file_path):
-    """
-    Fix TCX file Sport field to Garmin compatible format.
-    Strava uses formats like 'Run', 'Hike', 'Swim' which Garmin may not recognize.
-    This function converts them to Garmin API compatible sport types.
-    """
-    try:
-        from lxml import etree
+                    with open(data.filename, "rb") as f:
+                        file_body = process_garmin_data(f, use_fake_garmin_device)
 
-        tree = etree.parse(file_path)
-        root = tree.getroot()
+                    # Determine file extension from original filename
+                    ext = os.path.splitext(data.filename)[-1].lower().lstrip(".")
 
-        # Define namespace
-        ns = {"tcx": "http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd"}
+                    if self._use_garminconnect:
+                        # COM: use garminconnect (requires file path, not raw data)
+                        import tempfile
 
-        # Find all Activity elements
-        activities = root.findall(".//tcx:Activity", ns)
-        if not activities:
-            # Try without namespace (some TCX files don't use namespace)
-            activities = root.findall(".//Activity")
+                        # process_garmin_data may return bytes or BytesIO
+                        data_bytes = (
+                            file_body.read()
+                            if hasattr(file_body, "read")
+                            else file_body
+                        )
+                        with tempfile.NamedTemporaryFile(
+                            suffix=f".{ext}", delete=False
+                        ) as tmp:
+                            tmp.write(data_bytes)
+                            tmp_path = tmp.name
+                        try:
+                            result = self._client.upload_activity(tmp_path)
+                            print("garmin upload success: ", result)
+                        except Exception as e:
+                            print("garmin upload failed: ", e)
+                        finally:
+                            os.remove(tmp_path)
+                    else:
+                        # CN: use httpx
+                        files = {"file": (data.filename, file_body)}
+                        try:
+                            res = await self.req.post(
+                                self.upload_url, files=files, headers=self.headers
+                            )
+                            os.remove(data.filename)
+                        except Exception as e:
+                            print("garmin upload failed: ", e)
+                            continue
+                        try:
+                            resp = res.json()["detailedImportResult"]
+                            print("garmin upload success: ", resp)
+                        except Exception as e:
+                            print("garmin upload failed: ", e)
+                if not self._use_garminconnect:
+                    await self.req.aclose()
 
-        modified = False
-        for activity in activities:
-            sport_attr = activity.get("Sport")
-            if sport_attr and sport_attr in STRAVA_TO_GARMIN_SPORT:
-                new_sport = STRAVA_TO_GARMIN_SPORT[sport_attr]
-                print(f"Fixing TCX sport: {sport_attr} -> {new_sport}")
-                activity.set("Sport", new_sport)
-                modified = True
-
-        if modified:
-            tree.write(
-                file_path,
-                encoding="utf-8",
-                xml_declaration=True,
-                pretty_print=True,
-            )
-            print(f"TCX sport type fixed: {file_path}")
-
-    except Exception as e:
-        print(f"Failed to fix TCX sport type: {e}")
-
-
-async def upload_activities_original_from_strava(
-        self, datas, use_fake_garmin_device=False
-    ):
-        if self._client is None:
-            print(
-                "[Garmin.upload_activities_original_from_strava] No garmin client, skipping upload"
-            )
-            return
-        print(
-            "start upload activities to garmin!, use_fake_garmin_device:",
-            use_fake_garmin_device,
-        )
-        for data in datas:
-            with open(data.filename, "wb") as f:
-                for chunk in data.content:
-                    f.write(chunk)
-
-            # Fix TCX sport type before upload
-            ext = os.path.splitext(data.filename)[-1].lower()
-            if ext in [".tcx", ".TCX"]:
-                fix_tcx_sport_type(data.filename)
-
-            with open(data.filename, "rb") as f:
-                file_body = process_garmin_data(f, use_fake_garmin_device)
-
-            # Determine file extension from original filename
-            ext = os.path.splitext(data.filename)[-1].lower().lstrip(".")
+        async def upload_activity_from_file(self, file):
+            print("Uploading " + str(file))
+            with open(file, "rb") as f:
+                file_body = f.read()
 
             if self._use_garminconnect:
                 # COM: use garminconnect (requires file path, not raw data)
                 import tempfile
 
-                # process_garmin_data may return bytes or BytesIO
-                data_bytes = (
-                    file_body if isinstance(file_body, bytes) else file_body.getvalue()
-                )
+                ext = os.path.splitext(file)[-1].lower().lstrip(".")
                 with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
-                    tmp.write(data_bytes)
+                    tmp.write(file_body)
                     tmp_path = tmp.name
                 try:
                     result = self._client.upload_activity(tmp_path)
@@ -374,72 +417,32 @@ async def upload_activities_original_from_strava(
                     print("garmin upload failed: ", e)
                 finally:
                     os.remove(tmp_path)
-                os.remove(data.filename)
             else:
                 # CN: use httpx
-                files = {"file": (data.filename, file_body)}
+                files = {"file": (file, file_body)}
                 try:
                     res = await self.req.post(
                         self.upload_url, files=files, headers=self.headers
                     )
-                    os.remove(data.filename)
                 except Exception as e:
-                    print("garmin upload failed: ", e)
-                    continue
+                    print(str(e))
+                    return
                 try:
                     resp = res.json()["detailedImportResult"]
                     print("garmin upload success: ", resp)
                 except Exception as e:
                     print("garmin upload failed: ", e)
-        if not self._use_garminconnect:
-            await self.req.aclose()
 
-    async def upload_activity_from_file(self, file):
-        print("Uploading " + str(file))
-        with open(file, "rb") as f:
-            file_body = f.read()
+        async def upload_activities_files(self, files):
+            print("start upload activities to garmin!")
 
-        if self._use_garminconnect:
-            # COM: use garminconnect (requires file path, not raw data)
-            import tempfile
+            await gather_with_concurrency(
+                10,
+                [self.upload_activity_from_file(file=f) for f in files],
+            )
 
-            ext = os.path.splitext(file)[-1].lower().lstrip(".")
-            with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
-                tmp.write(file_body)
-                tmp_path = tmp.name
-            try:
-                result = self._client.upload_activity(tmp_path)
-                print("garmin upload success: ", result)
-            except Exception as e:
-                print("garmin upload failed: ", e)
-            finally:
-                os.remove(tmp_path)
-        else:
-            # CN: use httpx
-            files = {"file": (file, file_body)}
-            try:
-                res = await self.req.post(
-                    self.upload_url, files=files, headers=self.headers
-                )
-            except Exception as e:
-                print(str(e))
-                return
-            try:
-                resp = res.json()["detailedImportResult"]
-                print("garmin upload success: ", resp)
-            except Exception as e:
-                print("garmin upload failed: ", e)
-
-    async def upload_activities_files(self, files):
-        print("start upload activities to garmin!")
-
-        await gather_with_concurrency(
-            10,
-            [self.upload_activity_from_file(file=f) for f in files],
-        )
-
-        if not self._use_garminconnect:
-            await self.req.aclose()
+            if not self._use_garminconnect:
+                await self.req.aclose()
 
 
 class GarminConnectHttpError(Exception):
