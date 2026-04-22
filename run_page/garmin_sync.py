@@ -328,74 +328,77 @@ class Garmin:
             response.raise_for_status()
             return response.read()
 
-        async def upload_activities_original_from_strava(
-                self, datas, use_fake_garmin_device=False
-            ):
-                if self._client is None:
-                    print(
-                        "[Garmin.upload_activities_original_from_strava] No garmin client, skipping upload"
-                    )
-                    return
-                print(
-                    "start upload activities to garmin!, use_fake_garmin_device:",
-                    use_fake_garmin_device,
+    async def upload_activities_original_from_strava(
+            self, datas, use_fake_garmin_device=False
+        ):
+        if self._client is None:
+            print(
+                "[Garmin.upload_activities_original_from_strava] No garmin client, skipping upload"
+            )
+            return
+        print(
+            "start upload activities to garmin!, use_fake_garmin_device:",
+            use_fake_garmin_device,
+        )
+        for data in datas:
+            with open(data.filename, "wb") as f:
+                for chunk in data.content:
+                    f.write(chunk)
+
+            # Fix TCX sport type before upload
+            ext = os.path.splitext(data.filename)[-1].lower()
+            if ext in [".tcx", ".TCX"]:
+                fix_tcx_sport_type(data.filename)
+
+            with open(data.filename, "rb") as f:
+                file_body = process_garmin_data(f, use_fake_garmin_device)
+
+            # Determine file extension from original filename
+            ext = os.path.splitext(data.filename)[-1].lower().lstrip(".")
+
+            if self._use_garminconnect:
+                # COM: use garminconnect (requires file path, not raw data)
+                import tempfile
+
+                # process_garmin_data may return bytes or BytesIO
+                data_bytes = (
+                    file_body.read()
+                    if hasattr(file_body, "read")
+                    else file_body
                 )
-                for data in datas:
-                    with open(data.filename, "wb") as f:
-                        for chunk in data.content:
-                            f.write(chunk)
+                with tempfile.NamedTemporaryFile(
+                    suffix=f".{ext}", delete=False
+                ) as tmp:
+                    tmp.write(data_bytes)
+                    tmp_path = tmp.name
+                try:
+                    result = self._client.upload_activity(tmp_path)
+                    print("garmin upload success: ", result)
+                except Exception as e:
+                    print("garmin upload failed: ", e)
+                finally:
+                    os.remove(tmp_path)
+            else:
+                # CN: use httpx
+                files = {"file": (data.filename, file_body)}
+                try:
+                    res = await self.req.post(
+                        self.upload_url, files=files, headers=self.headers
+                    )
+                    os.remove(data.filename)
+                except Exception as e:
+                    print("garmin upload failed: ", e)
+                    continue
+                try:
+                    resp = res.json()["detailedImportResult"]
+                    print("garmin upload success: ", resp)
+                except Exception as e:
+                    print("garmin upload failed: ", e)
+        if not self._use_garminconnect:
+            await self.req.aclose()
 
-                    # Fix TCX sport type before upload
-                    ext = os.path.splitext(data.filename)[-1].lower()
-                    if ext in [".tcx", ".TCX"]:
-                        fix_tcx_sport_type(data.filename)
-
-                    with open(data.filename, "rb") as f:
-                        file_body = process_garmin_data(f, use_fake_garmin_device)
-
-                    # Determine file extension from original filename
-                    ext = os.path.splitext(data.filename)[-1].lower().lstrip(".")
-
-                    if self._use_garminconnect:
-                        # COM: use garminconnect (requires file path, not raw data)
-                        import tempfile
-
-                        # process_garmin_data may return bytes or BytesIO
-                        data_bytes = (
-                            file_body.read()
-                            if hasattr(file_body, "read")
-                            else file_body
-                        )
-                        with tempfile.NamedTemporaryFile(
-                            suffix=f".{ext}", delete=False
-                        ) as tmp:
-                            tmp.write(data_bytes)
-                            tmp_path = tmp.name
-                        try:
-                            result = self._client.upload_activity(tmp_path)
-                            print("garmin upload success: ", result)
-                        except Exception as e:
-                            print("garmin upload failed: ", e)
-                        finally:
-                            os.remove(tmp_path)
-                    else:
-                        # CN: use httpx
-                        files = {"file": (data.filename, file_body)}
-                        try:
-                            res = await self.req.post(
-                                self.upload_url, files=files, headers=self.headers
-                            )
-                            os.remove(data.filename)
-                        except Exception as e:
-                            print("garmin upload failed: ", e)
-                            continue
-                        try:
-                            resp = res.json()["detailedImportResult"]
-                            print("garmin upload success: ", resp)
-                        except Exception as e:
-                            print("garmin upload failed: ", e)
-                if not self._use_garminconnect:
-                    await self.req.aclose()
+        async def upload_activity_from_file(self, file):
+            print("Uploading " + str(file))
 
         async def upload_activity_from_file(self, file):
             print("Uploading " + str(file))
