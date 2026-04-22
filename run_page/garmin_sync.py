@@ -403,6 +403,35 @@ class Garmin:
                 try:
                     result = self._client.upload_activity(tmp_path)
                     print("garmin upload success: ", result)
+                    
+                    # Set correct activity type after upload
+                    if strava_sport_type and strava_sport_type in STRAVA_TO_GARMIN_SPORT:
+                        garmin_sport = STRAVA_TO_GARMIN_SPORT[strava_sport_type]
+                        # Get activity ID from response
+                        try:
+                            import json
+                            resp_data = result.json() if hasattr(result, 'json') else result
+                            detailed = resp_data.get('detailedImportResult', {})
+                            successes = detailed.get('successes', [])
+                            if successes:
+                                activity_id = successes[0].get('internalId') or successes[0].get('activityId')
+                                if activity_id:
+                                    print(f"Setting activity type to {garmin_sport} for activity {activity_id}")
+                                    # Get activity types to find type_id and parent_type_id
+                                    activity_types = self._client.get_activity_types()
+                                    sport_type_info = next((t for t in activity_types if t.get('typeKey') == garmin_sport), None)
+                                    if sport_type_info:
+                                        self._client.set_activity_type(
+                                            activity_id=str(activity_id),
+                                            type_id=sport_type_info.get('typeId'),
+                                            type_key=garmin_sport,
+                                            parent_type_id=sport_type_info.get('parentTypeId')
+                                        )
+                                        print(f"Activity type set to {garmin_sport}")
+                                    else:
+                                        print(f"Could not find type info for {garmin_sport}")
+                        except Exception as type_e:
+                            print(f"Failed to set activity type: {type_e}")
                 except Exception as e:
                     print("garmin upload failed: ", e)
                 finally:
