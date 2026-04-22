@@ -748,6 +748,201 @@ class Garmin:
                             os.remove(data.filename)
                     except:
                         pass
+
+                # CN: Set activity type and name after upload (same logic as COM, but via httpx)
+                garmin_sport = None
+                if strava_sport_type and strava_sport_type in STRAVA_TO_GARMIN_SPORT:
+                    garmin_sport = STRAVA_TO_GARMIN_SPORT[strava_sport_type]
+                if not garmin_sport or garmin_sport == "other":
+                    filename_lower = data.filename.lower()
+                    filename_to_sport = {
+                        "vr_tennis": "tennis_v2",
+                        "vr_riding": "virtual_ride",
+                        "vr_run": "virtual_run",
+                        "vr_row": "indoor_rowing",
+                        "tennis": "tennis_v2",
+                        "squash": "squash",
+                        "badminton": "badminton",
+                        "racquetball": "racquetball",
+                        "table_tennis": "table_tennis",
+                        "ping_pong": "table_tennis",
+                        "workout": "other",
+                    }
+                    for pattern, sport in filename_to_sport.items():
+                        if pattern in filename_lower:
+                            garmin_sport = sport
+                            break
+
+                if not garmin_sport or garmin_sport == "other":
+                    print(
+                        f"[CN] No valid garmin sport type for '{strava_sport_type}', skipping type/name setting"
+                    )
+                    continue
+
+                # Get activity ID from upload response or by matching start time
+                activity_id = None
+                upload_id = resp.get("uploadId")
+                upload_time = resp.get("creationDate")
+                print(f"[CN] uploadId: {upload_id}, creationDate: {upload_time}")
+
+                if resp.get("successes") and len(resp.get("successes", [])) > 0:
+                    activity_id = resp["successes"][0].get("internalId") or resp[
+                        "successes"
+                    ][0].get("activityId")
+
+                if not activity_id and activity_start_time:
+                    try:
+                        from datetime import datetime
+
+                        activity_date = (
+                            activity_start_time.split("T")[0]
+                            if "T" in str(activity_start_time)
+                            else str(activity_start_time)[:10]
+                        )
+                        for retry in range(4):
+                            if retry > 0:
+                                wait_time = 10 * retry
+                                print(f"[CN] Retry {retry}, waiting {wait_time}s...")
+                                await asyncio.sleep(wait_time)
+                            try:
+                                recent_res = await self.req.get(
+                                    f"{self.modern_url}/activitylist-service/activities/search/activities?start=0&limit=50",
+                                    headers=self.headers,
+                                )
+                                recent = recent_res.json()
+                                if isinstance(recent, dict):
+                                    recent = recent.get("activities", recent)
+                                print(f"[CN] Got {len(recent)} recent activities")
+                                for act in recent:
+                                    act_id = act.get("activityId")
+                                    act_start = act.get("startTimeGMT") or act.get(
+                                        "startTime"
+                                    )
+                                    if act_start and activity_start_time:
+                                        try:
+                                            strava_str = (
+                                                str(activity_start_time)
+                                                .replace("T", " ", 1)
+                                                .split("+")[0]
+                                                .split("Z")[0]
+                                                .strip()
+                                            )
+                                            garmin_str = (
+                                                str(act_start)
+                                                .replace("T", " ", 1)
+                                                .split("+")[0]
+                                                .split("Z")[0]
+                                                .strip()
+                                            )
+                                            if "." not in garmin_str:
+                                                garmin_dt = datetime.strptime(
+                                                    garmin_str, "%Y-%m-%d %H:%M:%S"
+                                                )
+                                            else:
+                                                garmin_dt = datetime.fromisoformat(
+                                                    garmin_str.replace(" ", "T")
+                                                )
+                                            strava_dt = datetime.fromisoformat(
+                                                strava_str
+                                            )
+                                            diff = abs(
+                                                (strava_dt - garmin_dt).total_seconds()
+                                            )
+                                            print(
+                                                f"[CN] Checking act {act_id}: start={garmin_str}, diff={diff}s"
+                                            )
+                                            if diff <= 300:
+                                                activity_id = act_id
+                                                print(
+                                                    f"[CN] Found match! Activity ID: {activity_id}, diff={diff}s"
+                                                )
+                                                break
+                                        except Exception as te:
+                                            print(f"[CN] Time parse error: {te}")
+                                if activity_id:
+                                    break
+                            except Exception as ge:
+                                print(f"[CN] Error fetching activities: {ge}")
+                    except Exception as match_e:
+                        print(f"[CN] Failed to match activity by start time: {match_e}")
+
+                if not activity_id:
+                    print("[CN] Could not find activity ID, skipping type/name setting")
+                    continue
+
+                print(f"[CN] Setting activity type to {garmin_sport} for {activity_id}")
+
+                # Get activity types from CN API
+                try:
+                    types_res = await self.req.get(
+                        f"{self.modern_url}/activity-service/activityTypes",
+                        headers=self.headers,
+                    )
+                    activity_types = types_res.json()
+                    if isinstance(activity_types, dict):
+                        activity_types = activity_types.get(
+                            "activityTypes", activity_types
+                        )
+                    print(f"[CN] Total activity types: {len(activity_types)}")
+                except Exception as type_fetch_e:
+                    print(f"[CN] Failed to fetch activity types: {type_fetch_e}")
+                    activity_types = []
+
+                sport_type_info = None
+                for t in activity_types:
+                    if t.get("typeKey") == garmin_sport:
+                        sport_type_info = t
+                        break
+                if not sport_type_info:
+                    for t in activity_types:
+                        if t.get("typeKey", "").lower() == garmin_sport.lower():
+                            sport_type_info = t
+                            break
+
+                if sport_type_info:
+                    try:
+                        patch_res = await self.req.patch(
+                            f"{self.modern_url}/activity-service/activity/{activity_id}",
+                            headers={
+                                **self.headers,
+                                "Content-Type": "application/json",
+                            },
+                            json={
+                                "activityType": {
+                                    "typeId": sport_type_info.get("typeId"),
+                                    "typeKey": garmin_sport,
+                                    "parentTypeId": sport_type_info.get("parentTypeId"),
+                                }
+                            },
+                        )
+                        print(
+                            f"[CN] set_activity_type result: {patch_res.status_code}, {patch_res.text[:200] if patch_res.text else 'ok'}"
+                        )
+                        print(f"Activity type set to {garmin_sport}")
+                    except Exception as patch_e:
+                        print(f"[CN] set_activity_type failed: {patch_e}")
+                else:
+                    print(
+                        f"[CN] Could not find type info for '{garmin_sport}' in CN activity types"
+                    )
+
+                # Set activity name
+                if activity_name:
+                    try:
+                        name_patch = await self.req.patch(
+                            f"{self.modern_url}/activity-service/activity/{activity_id}",
+                            headers={
+                                **self.headers,
+                                "Content-Type": "application/json",
+                            },
+                            json={"activityName": activity_name},
+                        )
+                        print(
+                            f"[CN] set_activity_name result: {name_patch.status_code}, {name_patch.text[:200] if name_patch.text else 'ok'}"
+                        )
+                        print(f"Activity name set to: {activity_name}")
+                    except Exception as name_e:
+                        print(f"[CN] set_activity_name failed: {name_e}")
         if not self._use_garminconnect:
             await self.req.aclose()
 
