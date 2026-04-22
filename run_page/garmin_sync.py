@@ -456,18 +456,34 @@ class Garmin:
                                                     act_title = act.get('activityName') or act.get('title')
                                                     print(f"[DEBUG] Checking: {act_id}, startTime: {act_start}, title: {act_title}")
                                                     
-                                                    # Match by activity start time from Strava
+                                                    # Match by activity start time from Strava (with 5 min tolerance)
                                                     if act_start and activity_start_time:
-                                                        # Normalize formats for comparison
-                                                        # Strava format: "2026-04-22T14:33:44Z" or "2026-04-22 14:33:44"
-                                                        # Garmin format: "2026-04-22 14:33:44" or "2026-04-22T14:33:44Z"
-                                                        strava_time = str(activity_start_time).replace('T', ' ').replace('Z', '').strip()
-                                                        garmin_time = str(act_start).replace('T', ' ').replace('Z', '').strip()
-                                                        # Compare first 19 chars (YYYY-MM-DD HH:MM:SS)
-                                                        if strava_time[:19] == garmin_time[:19]:
-                                                            activity_id = act_id
-                                                            print(f"[DEBUG] Found match! Activity ID: {activity_id}")
-                                                            break
+                                                        try:
+                                                            from datetime import datetime
+                                                            # Parse times
+                                                            # Strava: "2026-04-22T14:33:44+00:00" or "2026-04-22 11:19:38+00:00"
+                                                            # Garmin: "2026-04-22 14:33:44" or "2026-04-22T14:33:44Z"
+                                                            strava_str = str(activity_start_time).replace('T', ' ', 1).split('+')[0].split('Z')[0].strip()
+                                                            garmin_str = str(act_start).replace('T', ' ', 1).split('+')[0].split('Z')[0].strip()
+                                                            
+                                                            # Parse datetime (handle both with and without microseconds)
+                                                            strava_dt = datetime.fromisoformat(strava_str)
+                                                            if '.' not in garmin_str:
+                                                                garmin_dt = datetime.strptime(garmin_str, "%Y-%m-%d %H:%M:%S")
+                                                            else:
+                                                                garmin_dt = datetime.fromisoformat(garmin_str.replace(' ', 'T'))
+                                                            
+                                                            # Calculate difference in seconds
+                                                            diff_seconds = abs((strava_dt - garmin_dt).total_seconds())
+                                                            print(f"[DEBUG] Time comparison: strava={strava_str}, garmin={garmin_str}, diff={diff_seconds}s")
+                                                            
+                                                            # Match if within 5 minutes (300 seconds)
+                                                            if diff_seconds <= 300:
+                                                                activity_id = act_id
+                                                                print(f"[DEBUG] Found match! Activity ID: {activity_id}, time diff: {diff_seconds}s")
+                                                                break
+                                                        except Exception as time_e:
+                                                            print(f"[DEBUG] Time parse error: {time_e}")
                                                 
                                                 if activity_id:
                                                     break
