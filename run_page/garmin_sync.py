@@ -414,15 +414,17 @@ class Garmin:
                             resp_data = result.json() if hasattr(result, 'json') else result
                             detailed = resp_data.get('detailedImportResult', {}) if isinstance(resp_data, dict) else {}
                             successes = detailed.get('successes', []) if isinstance(detailed, dict) else []
+                            upload_id = detailed.get('uploadId')
+                            upload_time = detailed.get('creationDate')
+                            upload_file_size = detailed.get('fileSize')
+                            print(f"[DEBUG] upload uploadId: {upload_id}, creationDate: {upload_time}, fileSize: {upload_file_size}")
                             
                             activity_id = None
                             if successes:
                                 activity_id = successes[0].get('internalId') or successes[0].get('activityId')
                             else:
                                 # Try to find activity by creation time from recent activities
-                                # The uploadId from response doesn't match activityId, so use time-based matching
-                                upload_time = detailed.get('creationDate') if isinstance(detailed, dict) else None
-                                print(f"[DEBUG] upload creationDate: {upload_time}")
+                                print("[DEBUG] Fetching activities by date to match...")
                                 if upload_time:
                                     # Get recent activities to find the one we just uploaded
                                     # Use date-based search with retry since new uploads need time to process
@@ -453,10 +455,17 @@ class Garmin:
                                                     print(f"[DEBUG] Got {len(recent)} activities for {search_date}")
                                                     for act in recent:
                                                         act_start_time = act.get('startTimeGMT') or act.get('startTime')
-                                                        print(f"[DEBUG] Checking activity: {act.get('activityId')}, startTime: {act_start_time}")
+                                                        act_file_size = act.get('fileSize')
+                                                        print(f"[DEBUG] Checking activity: {act.get('activityId')}, startTime: {act_start_time}, fileSize: {act_file_size}")
+                                                        # Match by creation time (if available) or file size
                                                         if act_start_time == upload_time:
                                                             activity_id = act.get('activityId')
                                                             print(f"[DEBUG] Found matching activity by time: {activity_id}")
+                                                            break
+                                                        elif upload_file_size and act_file_size and act_file_size == upload_file_size:
+                                                            # Fallback: match by file size
+                                                            activity_id = act.get('activityId')
+                                                            print(f"[DEBUG] Found matching activity by file size: {activity_id}")
                                                             break
                                                     if activity_id:
                                                         break
