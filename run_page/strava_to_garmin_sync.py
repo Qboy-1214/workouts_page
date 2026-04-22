@@ -45,6 +45,16 @@ async def upload_to_activities(
         sport_type = i.type.root if hasattr(i.type, 'root') else str(i.type) if i.type else 'other'
         # Extract activity start time (for matching after upload)
         activity_start_time = i.start_date or i.start_date_local or None
+        # DEBUG: print all available attributes of the activity object
+        print(f"[DEBUG] Activity ID: {i.id}, available attributes:")
+        for attr in dir(i):
+            if not attr.startswith('_'):
+                try:
+                    val = getattr(i, attr)
+                    if not callable(val):
+                        print(f"  - {attr}: {val}")
+                except:
+                    pass
         print(f"[download] Getting activity data for activity ID: {i.id}, type: {sport_type}, start: {activity_start_time}")
         try:
             data = strava_web_client.get_activity_data(
