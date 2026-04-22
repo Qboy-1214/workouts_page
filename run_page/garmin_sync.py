@@ -149,8 +149,16 @@ def fix_tcx_sport_type(file_path, strava_sport_type=None):
     Strava uses formats like 'Run', 'Hike', 'Swim' which Garmin may not recognize.
     This function converts them to Garmin API compatible sport types.
     """
+    import traceback
     try:
         from lxml import etree
+        import urllib.parse
+
+        # Decode URL-encoded characters in filename
+        decoded_path = urllib.parse.unquote(file_path)
+        if decoded_path != file_path:
+            print(f"[fix_tcx_sport_type] Decoded filename: {decoded_path}")
+            file_path = decoded_path
 
         tree = etree.parse(file_path)
         root = tree.getroot()
@@ -198,6 +206,7 @@ def fix_tcx_sport_type(file_path, strava_sport_type=None):
 
     except Exception as e:
         print(f"Failed to fix TCX sport type: {e}")
+        traceback.print_exc()
 
 
 class Garmin:
