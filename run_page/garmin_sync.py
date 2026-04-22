@@ -57,6 +57,8 @@ GARMIN_CN_URL_DICT = {
 # Strava to Garmin sport type mapping (Garmin compatible format)
 # Garmin typeKey reference: https://github.com/pe-st/garmin-connect-export/blob/master/json/activityTypes.json
 STRAVA_TO_GARMIN_SPORT = {
+    # Generic
+    "Workout": "other",  # Generic workout, will try to infer from filename
     # Running
     "Run": "running",
     "Trail Run": "trail_running",
@@ -412,9 +414,43 @@ class Garmin:
                     
                     # Set correct activity type after upload
                     print(f"[DEBUG] Checking sport type: strava_sport_type={strava_sport_type}")
+                    
+                    # Determine the final Garmin sport type
+                    garmin_sport = None
+                    
+                    # If strava_sport_type is in mapping, use it
                     if strava_sport_type and strava_sport_type in STRAVA_TO_GARMIN_SPORT:
-                        print(f"[DEBUG] Sport type {strava_sport_type} is in mapping, garmin_sport={STRAVA_TO_GARMIN_SPORT[strava_sport_type]}")
                         garmin_sport = STRAVA_TO_GARMIN_SPORT[strava_sport_type]
+                        print(f"[DEBUG] Sport type {strava_sport_type} mapped to garmin_sport={garmin_sport}")
+                    
+                    # If strava_sport_type maps to "other" or not in mapping, try to infer from filename
+                    if not garmin_sport or garmin_sport == "other":
+                        # Try to infer sport type from filename (e.g., vr_tennis.tcx -> tennis)
+                        filename_lower = data.filename.lower()
+                        print(f"[DEBUG] Trying to infer sport from filename: {data.filename}")
+                        
+                        # Common filename patterns for VR activities
+                        filename_to_sport = {
+                            "vr_tennis": "tennis_v2",
+                            "vr_riding": "virtual_ride",
+                            "vr_run": "virtual_run",
+                            "vr_row": "indoor_rowing",
+                            "tennis": "tennis_v2",
+                            "squash": "squash",
+                            "badminton": "badminton",
+                            "racquetball": "racquetball",
+                            "table_tennis": "table_tennis",
+                            "ping_pong": "table_tennis",
+                            "workout": "other",
+                        }
+                        
+                        for pattern, sport in filename_to_sport.items():
+                            if pattern in filename_lower:
+                                garmin_sport = sport
+                                print(f"[DEBUG] Inferred sport from filename: {pattern} -> {sport}")
+                                break
+                    
+                    if garmin_sport and garmin_sport != "other":
                         # Get activity ID from response
                         try:
                             resp_data = result.json() if hasattr(result, 'json') else result
