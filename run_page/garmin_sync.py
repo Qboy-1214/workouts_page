@@ -405,7 +405,9 @@ class Garmin:
                     print("garmin upload success: ", result)
                     
                     # Set correct activity type after upload
+                    print(f"[DEBUG] Checking sport type: strava_sport_type={strava_sport_type}")
                     if strava_sport_type and strava_sport_type in STRAVA_TO_GARMIN_SPORT:
+                        print(f"[DEBUG] Sport type {strava_sport_type} is in mapping, garmin_sport={STRAVA_TO_GARMIN_SPORT[strava_sport_type]}")
                         garmin_sport = STRAVA_TO_GARMIN_SPORT[strava_sport_type]
                         # Get activity ID from response
                         try:
@@ -419,14 +421,19 @@ class Garmin:
                             else:
                                 # Try to find activity by uploadId from recent activities
                                 upload_id = detailed.get('uploadId') if isinstance(detailed, dict) else None
+                                print(f"[DEBUG] upload_id from response: {upload_id}")
                                 if upload_id:
                                     # Get recent activities to find the one we just uploaded
+                                    print("[DEBUG] Fetching recent activities...")
                                     recent = self._client.get_activities(0, 10)
+                                    print(f"[DEBUG] Got {len(recent)} recent activities")
                                     for act in recent:
                                         # Match by uploadId or creation time
                                         act_upload_id = act.get('uploadId') or act.get('activityId')
+                                        print(f"[DEBUG] Checking activity: {act.get('activityId')}, uploadId: {act_upload_id}")
                                         if str(act_upload_id) == str(upload_id):
                                             activity_id = act.get('activityId')
+                                            print(f"[DEBUG] Found matching activity: {activity_id}")
                                             break
                             
                             if activity_id:
