@@ -427,11 +427,11 @@ class Garmin:
                                 print("[DEBUG] Fetching activities by date to match...")
                                 if upload_time:
                                     # Get recent activities to find the one we just uploaded
-                                    # Use date-based search with retry since new uploads need time to process
                                     print("[DEBUG] Fetching activities to match...")
                                     try:
                                         # Extract date from creationDate (format: "2026-04-22 14:58:27.716 GMT")
                                         upload_date = upload_time.split(' ')[0] if upload_time else None
+                                        upload_time_part = upload_time.split(' ')[1] if upload_time else None  # e.g. "15:37:00.182"
                                         print(f"[DEBUG] Upload date: {upload_date}, time: {upload_time}")
                                         
                                         activity_id = None
@@ -444,26 +444,45 @@ class Garmin:
                                                 time.sleep(wait_time)
                                             
                                             try:
-                                                # First try get_activities with larger limit
-                                                recent = self._client.get_activities(0, 100)
-                                                print(f"[DEBUG] Got {len(recent)} activities from get_activities(0, 100)")
+                                                # Use get_activities_by_date to get all activities for the upload date
+                                                recent = self._client.get_activities_by_date(upload_date, sortorder="desc") if upload_date else []
+                                                print(f"[DEBUG] Got {len(recent)} activities for {upload_date}")
                                                 
+                                                # If get_activities_by_date returns empty, fall back to get_activities
+                                                if not recent:
+                                                    recent = self._client.get_activities(0, 100)
+                                                    print(f"[DEBUG] Fallback: got {len(recent)} activities from get_activities")
+                                                
+                                                # Filter activities for the same date and find best match
+                                                same_date_activities = []
                                                 for act in recent:
-                                                    # Get all relevant fields for debugging
                                                     act_id = act.get('activityId')
                                                     act_start = act.get('startTimeGMT') or act.get('startTime')
-                                                    act_upload_time = act.get('uploadTime') or act.get('uploadedTime')
                                                     act_title = act.get('activityName') or act.get('title')
-                                                    print(f"[DEBUG] Activity: {act_id}, startTime: {act_start}, uploadTime: {act_upload_time}, title: {act_title}")
                                                     
-                                                    # Match by startTime == upload_time (exact match)
-                                                    if act_start and act_start == upload_time:
+                                                    if act_start and act_start.startswith(upload_date):
+                                                        same_date_activities.append((act_id, act_start, act_title))
+                                                        print(f"[DEBUG] Same date activity: {act_id}, startTime: {act_start}, title: {act_title}")
+                                                    
+                                                    # Exact match by startTime
+                                                    if act_start == upload_time:
                                                         activity_id = act_id
-                                                        print(f"[DEBUG] Found matching activity by startTime: {activity_id}")
+                                                        print(f"[DEBUG] Found exact match by startTime: {activity_id}")
                                                         break
                                                 
                                                 if activity_id:
                                                     break
+                                                
+                                                # If no exact match, find the most recent same-date activity
+                                                if same_date_activities:
+                                                    # Sort by startTime descending (most recent first)
+                                                    same_date_activities.sort(key=lambda x: x[1], reverse=True)
+                                                    # Take the most recent one that's close to upload time
+                                                    # Assume the new activity is the most recent one uploaded
+                                                    best_match = same_date_activities[0]
+                                                    activity_id = best_match[0]
+                                                    print(f"[DEBUG] Using most recent same-date activity: {activity_id}, startTime: {best_match[1]}")
+                                                
                                             except Exception as get_e:
                                                 print(f"[DEBUG] Error with get_activities: {get_e}")
                                                 
