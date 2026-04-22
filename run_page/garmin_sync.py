@@ -199,7 +199,136 @@ class Garmin:
             response.raise_for_status()
             return response.read()
 
-    async def upload_activities_original_from_strava(
+    # Strava to Garmin sport type mapping (Garmin compatible format)
+# Garmin typeKey reference: https://github.com/pe-st/garmin-connect-export/blob/master/json/activityTypes.json
+STRAVA_TO_GARMIN_SPORT = {
+    # Running
+    "Run": "running",
+    "Trail Run": "trail_running",
+    "Street Run": "street_running",
+    "Track Run": "track_running",
+    "Treadmill": "treadmill_running",
+    "Virtual Run": "virtual_run",
+    # Cycling
+    "Ride": "cycling",
+    "Mountain Bike": "mountain_biking",
+    "Road Bike": "road_biking",
+    "EBikeRide": "e_bike_mountain",
+    "VirtualRide": "virtual_ride",
+    "Indoor Ride": "indoor_cycling",
+    "Gravel Ride": "gravel_cycling",
+    "Cyclocross": "cyclocross",
+    # Winter sports
+    "Ski": "resort_skiing",
+    "Backcountry Ski": "backcountry_skiing",
+    "Snowboard": "resort_snowboarding",
+    "Backcountry Snowboard": "backcountry_snowboarding",
+    "Cross Country Ski": "cross_country_skiing_ws",
+    "Snowshoe": "snow_shoe_ws",
+    # Water sports
+    "Swim": "swimming",
+    "Rowing": "rowing_v2",
+    "Kayaking": "kayaking_v2",
+    "Stand Up Paddling": "stand_up_paddleboarding_v2",
+    "Surfing": "surfing_v2",
+    "Windsurfing": "windsufing_v2",
+    "Kite Surfing": "kiteboarding_v2",
+    "Wakeboarding": "wakeboarding_v2",
+    "Wakesurfing": "wakesurfing",
+    "Water Skiing": "waterskiing",
+    # Outdoor
+    "Walk": "walking",
+    "Hike": "hiking",
+    "Rock Climbing": "rock_climbing",
+    # Team sports
+    "Soccer": "soccer",
+    "Football": "american_football",
+    "Basketball": "basketball",
+    "Baseball": "baseball",
+    "Volleyball": "volleyball",
+    "Softball": "softball",
+    "Rugby": "rugby",
+    "Cricket": "cricket",
+    "Ice Hockey": "ice_hockey",
+    "Field Hockey": "field_hockey",
+    "Lacrosse": "lacrosse",
+    "Ultimate": "ultimate_disc",
+    # Racket sports
+    "Tennis": "tennis_v2",
+    "Pickleball": "pickleball",
+    "Squash": "squash",
+    "Racquetball": "racquetball",
+    "Badminton": "badminton",
+    "Table Tennis": "table_tennis",
+    "Paddle Tennis": "platform_tennis",
+    "Padel": "paddelball",
+    # Fitness & Gym
+    "Weightlifting": "strength_training",
+    "Elliptical": "elliptical",
+    "Stair Stepper": "stair_climbing",
+    "Rowing Machine": "indoor_rowing",
+    "Yoga": "yoga",
+    "Pilates": "pilates",
+    "HIIT": "hiit",
+    "Dance": "dance",
+    "Jump Rope": "jump_rope",
+    "Boxing": "boxing",
+    "Martial Arts": "mixed_martial_arts",
+    "Archery": "archery",
+    # Other
+    "Golf": "golf",
+    "Inline Skating": "inline_skating",
+    "Skateboarding": "other",
+    "Meditation": "meditation",
+    "Cross Country Ski": "cross_country_skiing_ws",
+    "BMX": "bmx",
+}
+
+
+def fix_tcx_sport_type(file_path):
+    """
+    Fix TCX file Sport field to Garmin compatible format.
+    Strava uses formats like 'Run', 'Hike', 'Swim' which Garmin may not recognize.
+    This function converts them to Garmin API compatible sport types.
+    """
+    try:
+        from lxml import etree
+
+        tree = etree.parse(file_path)
+        root = tree.getroot()
+
+        # Define namespace
+        ns = {"tcx": "http://www.garmin.com/xmlschemas/TrainingCenterDatabasev2.xsd"}
+
+        # Find all Activity elements
+        activities = root.findall(".//tcx:Activity", ns)
+        if not activities:
+            # Try without namespace (some TCX files don't use namespace)
+            activities = root.findall(".//Activity")
+
+        modified = False
+        for activity in activities:
+            sport_attr = activity.get("Sport")
+            if sport_attr and sport_attr in STRAVA_TO_GARMIN_SPORT:
+                new_sport = STRAVA_TO_GARMIN_SPORT[sport_attr]
+                print(f"Fixing TCX sport: {sport_attr} -> {new_sport}")
+                activity.set("Sport", new_sport)
+                modified = True
+
+        if modified:
+            tree.write(
+                file_path,
+                encoding="utf-8",
+                xml_declaration=True,
+                pretty_print=True,
+            )
+            print(f"TCX sport type fixed: {file_path}")
+
+    except Exception as e:
+        print(f"Failed to fix TCX sport type: {e}")
+
+
+async def upload_activities_original_from_strava(
         self, datas, use_fake_garmin_device=False
     ):
         if self._client is None:
@@ -215,6 +344,11 @@ class Garmin:
             with open(data.filename, "wb") as f:
                 for chunk in data.content:
                     f.write(chunk)
+
+            # Fix TCX sport type before upload
+            ext = os.path.splitext(data.filename)[-1].lower()
+            if ext in [".tcx", ".TCX"]:
+                fix_tcx_sport_type(data.filename)
 
             with open(data.filename, "rb") as f:
                 file_body = process_garmin_data(f, use_fake_garmin_device)
