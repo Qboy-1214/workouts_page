@@ -364,12 +364,18 @@ class Garmin:
             use_fake_garmin_device,
         )
         for item in datas:
-            # Unpack data and sport type (wrapped as tuple in strava_to_garmin_sync.py)
-            if isinstance(item, tuple) and len(item) == 2:
+            # Unpack data, sport type and activity start time (wrapped as tuple in strava_to_garmin_sync.py)
+            # Format: (data, sport_type, activity_start_time) or (data, sport_type) or just data
+            if isinstance(item, tuple) and len(item) == 3:
+                data, strava_sport_type, activity_start_time = item
+            elif isinstance(item, tuple) and len(item) == 2:
                 data, strava_sport_type = item
+                activity_start_time = None
             else:
                 data = item
                 strava_sport_type = None
+                activity_start_time = None
+            print(f"[DEBUG] Processing activity: sport_type={strava_sport_type}, start_time={activity_start_time}")
             with open(data.filename, "wb") as f:
                 for chunk in data.content:
                     f.write(chunk)
@@ -423,71 +429,54 @@ class Garmin:
                             if successes:
                                 activity_id = successes[0].get('internalId') or successes[0].get('activityId')
                             else:
-                                # Try to find activity by creation time from recent activities
-                                print("[DEBUG] Fetching activities by date to match...")
-                                if upload_time:
-                                    # Get recent activities to find the one we just uploaded
-                                    print("[DEBUG] Fetching activities to match...")
+                                # Try to find activity by activity start time from Strava
+                                print("[DEBUG] Finding activity by start time...")
+                                if activity_start_time:
                                     try:
-                                        # Extract date from creationDate (format: "2026-04-22 14:58:27.716 GMT")
-                                        upload_date = upload_time.split(' ')[0] if upload_time else None
-                                        upload_time_part = upload_time.split(' ')[1] if upload_time else None  # e.g. "15:37:00.182"
-                                        print(f"[DEBUG] Upload date: {upload_date}, time: {upload_time}")
-                                        
                                         activity_id = None
+                                        # Extract date from activity_start_time
+                                        activity_date = activity_start_time.split('T')[0] if 'T' in str(activity_start_time) else str(activity_start_time)[:10]
+                                        print(f"[DEBUG] Looking for activity with start time: {activity_start_time}, date: {activity_date}")
                                         
                                         # Retry with delays to wait for processing
                                         for retry in range(4):
                                             if retry > 0:
                                                 wait_time = 10 * retry
-                                                print(f"[DEBUG] Retry {retry}, waiting {wait_time}s for activity to process...")
+                                                print(f"[DEBUG] Retry {retry}, waiting {wait_time}s...")
                                                 time.sleep(wait_time)
                                             
                                             try:
-                                                # Use get_activities_by_date to get all activities for the upload date
-                                                recent = self._client.get_activities_by_date(upload_date, sortorder="desc") if upload_date else []
-                                                print(f"[DEBUG] Got {len(recent)} activities for {upload_date}")
+                                                # Get activities for the activity date
+                                                recent = self._client.get_activities_by_date(activity_date, sortorder="desc")
+                                                print(f"[DEBUG] Got {len(recent)} activities for {activity_date}")
                                                 
-                                                # If get_activities_by_date returns empty, fall back to get_activities
-                                                if not recent:
-                                                    recent = self._client.get_activities(0, 100)
-                                                    print(f"[DEBUG] Fallback: got {len(recent)} activities from get_activities")
-                                                
-                                                # Filter activities for the same date and find best match
-                                                same_date_activities = []
                                                 for act in recent:
                                                     act_id = act.get('activityId')
                                                     act_start = act.get('startTimeGMT') or act.get('startTime')
                                                     act_title = act.get('activityName') or act.get('title')
+                                                    print(f"[DEBUG] Checking: {act_id}, startTime: {act_start}, title: {act_title}")
                                                     
-                                                    if act_start and act_start.startswith(upload_date):
-                                                        same_date_activities.append((act_id, act_start, act_title))
-                                                        print(f"[DEBUG] Same date activity: {act_id}, startTime: {act_start}, title: {act_title}")
-                                                    
-                                                    # Exact match by startTime
-                                                    if act_start == upload_time:
-                                                        activity_id = act_id
-                                                        print(f"[DEBUG] Found exact match by startTime: {activity_id}")
-                                                        break
+                                                    # Match by activity start time from Strava
+                                                    if act_start and activity_start_time:
+                                                        # Normalize formats for comparison
+                                                        # Strava format: "2026-04-22T14:33:44Z" or "2026-04-22 14:33:44"
+                                                        # Garmin format: "2026-04-22 14:33:44" or "2026-04-22T14:33:44Z"
+                                                        strava_time = str(activity_start_time).replace('T', ' ').replace('Z', '').strip()
+                                                        garmin_time = str(act_start).replace('T', ' ').replace('Z', '').strip()
+                                                        # Compare first 19 chars (YYYY-MM-DD HH:MM:SS)
+                                                        if strava_time[:19] == garmin_time[:19]:
+                                                            activity_id = act_id
+                                                            print(f"[DEBUG] Found match! Activity ID: {activity_id}")
+                                                            break
                                                 
                                                 if activity_id:
                                                     break
                                                 
-                                                # If no exact match, find the most recent same-date activity
-                                                if same_date_activities:
-                                                    # Sort by startTime descending (most recent first)
-                                                    same_date_activities.sort(key=lambda x: x[1], reverse=True)
-                                                    # Take the most recent one that's close to upload time
-                                                    # Assume the new activity is the most recent one uploaded
-                                                    best_match = same_date_activities[0]
-                                                    activity_id = best_match[0]
-                                                    print(f"[DEBUG] Using most recent same-date activity: {activity_id}, startTime: {best_match[1]}")
-                                                
                                             except Exception as get_e:
-                                                print(f"[DEBUG] Error with get_activities: {get_e}")
+                                                print(f"[DEBUG] Error: {get_e}")
                                                 
                                     except Exception as get_e:
-                                        print(f"[DEBUG] Failed to get activities: {get_e}")
+                                        print(f"[DEBUG] Failed: {get_e}")
                                         import traceback
                                         traceback.print_exc()
                             

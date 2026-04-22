@@ -43,14 +43,17 @@ async def upload_to_activities(
     for i in sorted(strava_activities, key=lambda i: int(i.id)):
         # Extract sport type - i.type may be an object with 'root' attribute
         sport_type = i.type.root if hasattr(i.type, 'root') else str(i.type) if i.type else 'other'
-        print(f"[download] Getting activity data for activity ID: {i.id}, type: {sport_type}")
+        # Extract activity start time (for matching after upload)
+        activity_start_time = i.start_date or i.start_date_local or None
+        print(f"[download] Getting activity data for activity ID: {i.id}, type: {sport_type}, start: {activity_start_time}")
         try:
             data = strava_web_client.get_activity_data(
                 i.id, fmt=format, json_fmt=DataFormat.TCX
             )
-            # Wrap the data with sport type info (ExportFile doesn't support dynamic attributes)
-            wrapped_data = (data, sport_type)
-            print(f"[download] Got activity data: {data.filename}, sport type: {sport_type}")
+            # Wrap the data with sport type and start time (ExportFile doesn't support dynamic attributes)
+            # Format: (data, sport_type, activity_start_time)
+            wrapped_data = (data, sport_type, activity_start_time)
+            print(f"[download] Got activity data: {data.filename}, sport type: {sport_type}, start time: {activity_start_time}")
             files_list.append(wrapped_data)
         except Exception as ex:
             print("get strava data error: ", ex)
