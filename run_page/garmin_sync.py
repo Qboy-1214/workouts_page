@@ -592,8 +592,13 @@ class Garmin:
                             traceback.print_exc()
                 except Exception as e:
                     print("garmin upload failed: ", e)
+                    continue
                 finally:
-                    os.remove(tmp_path)
+                    try:
+                        if os.path.exists(tmp_path):
+                            os.remove(tmp_path)
+                    except:
+                        pass
             else:
                 # CN: use httpx
                 files = {"file": (data.filename, file_body)}
