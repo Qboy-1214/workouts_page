@@ -33,6 +33,7 @@ async def get_cn_existing_timestamps(cn_client):
     """
     garmin_cn = Garmin(cn_client, "CN", False)
     cn_timestamps = set()
+    total_fetched = 0
 
     # Get all CN activities in batches
     start = 0
@@ -40,18 +41,27 @@ async def get_cn_existing_timestamps(cn_client):
     while True:
         activities = await garmin_cn.get_activities(start, limit)
         if not activities:
+            print(f"[DEBUG] CN activities batch empty at start={start}, total fetched: {total_fetched}")
             break
+        total_fetched += len(activities)
         for act in activities:
             # Use startTimeGMT + distance as unique identifier
             start_time = act.get("startTimeGMT", "")
             distance = act.get("distance", 0) or 0
             if start_time:
                 cn_timestamps.add((start_time, distance))
+        print(f"[DEBUG] CN activities: fetched {len(activities)} (total: {total_fetched}), timestamps count: {len(cn_timestamps)}")
         if len(activities) < limit:
             break
         start += limit
 
-    print(f"Found {len(cn_timestamps)} existing activities in Garmin CN")
+    print(f"[DEBUG] get_cn_existing_timestamps: Found {len(cn_timestamps)} unique activities in Garmin CN (fetched {total_fetched} total)")
+    
+    # Debug: print first few entries
+    if cn_timestamps:
+        sample = list(cn_timestamps)[:3]
+        print(f"[DEBUG] Sample CN timestamps: {sample}")
+    
     return cn_timestamps
 
 
@@ -72,6 +82,7 @@ async def download_with_cn_filter(
     to_generate_garmin_id2title = {}
     garmin_summary_infos_dict = {}
 
+    filtered_count = 0  # Track how many activities were filtered (already exist in CN)
     for id in activity_ids:
         try:
             activity_summary = await garmin_com.get_activity_summary(id)
@@ -84,8 +95,21 @@ async def download_with_cn_filter(
                 or 0
             )
 
-            # Check if this activity already exists in CN (by time + distance)
-            if (start_time, distance) in cn_existing_timestamps:
+            # Check if this activity already exists in CN (by time + distance with tolerance)
+            # Use distance tolerance of 1.0 meters to handle floating point precision differences
+            # between COM and CN (GPS distance can vary slightly due to different calculation methods)
+            exists_in_cn = False
+            if start_time:
+                for cn_time, cn_dist in cn_existing_timestamps:
+                    # If both have valid distances, check with tolerance
+                    # If one side is 0/null, rely on the other (some activities have null distance)
+                    if cn_time == start_time:
+                        dist_diff = abs(cn_dist - distance)
+                        if dist_diff < 1.0 or (cn_dist == 0 or distance == 0):
+                            exists_in_cn = True
+                            break
+            if exists_in_cn:
+                filtered_count += 1
                 continue
 
             activity_title = activity_summary.get("activityName", "")
@@ -97,6 +121,9 @@ async def download_with_cn_filter(
         except Exception as e:
             print(f"Failed to get activity summary {id}: {str(e)}")
             continue
+    
+    print(f"[DEBUG] Filtered out {filtered_count} activities that already exist in CN (out of {len(activity_ids)} total)")
+    print(f"[DEBUG] CN existing timestamps: {len(cn_existing_timestamps)}, COM total: {len(activity_ids)}")
 
     # Apply max_activities limit only if explicitly set (not 0)
     if max_activities > 0 and len(to_generate_ids) > max_activities:
