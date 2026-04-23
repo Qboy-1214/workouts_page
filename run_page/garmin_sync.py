@@ -773,47 +773,23 @@ async def download_garmin_data(
         if need_unzip:
             # Check if it's actually a ZIP file
             if file_data[:2] == b"PK":  # ZIP file signature
-                print(
-                    f"[DEBUG] {activity_id}: File is ZIP format, checking contents..."
-                )
                 try:
                     zip_file = zipfile.ZipFile(file_path, "r")
-                    file_list = zip_file.namelist()
-                    print(f"[DEBUG] {activity_id}: ZIP contents: {file_list}")
                     for file_info in zip_file.infolist():
                         zip_file.extract(file_info, folder)
                         if file_info.filename.endswith(".fit"):
                             extracted_path = os.path.join(folder, file_info.filename)
                             target_path = os.path.join(folder, f"{activity_id}.fit")
-                            print(
-                                f"[DEBUG] {activity_id}: Found FIT in ZIP: {file_info.filename}, extracted={extracted_path}, target={target_path}"
-                            )
                             if extracted_path != target_path:
                                 try:
                                     os.rename(extracted_path, target_path)
-                                    print(
-                                        f"[DEBUG] {activity_id}: Renamed FIT file: {extracted_path} -> {target_path}"
-                                    )
                                 except FileExistsError:
-                                    # Target already exists, remove the duplicate
-                                    print(
-                                        f"[DEBUG] {activity_id}: Target {target_path} already exists, removing duplicate {extracted_path}"
-                                    )
                                     os.remove(extracted_path)
-                                except Exception as rename_err:
-                                    print(
-                                        f"[DEBUG] {activity_id}: Rename failed: {rename_err}"
-                                    )
+                                except Exception:
                                     import glob
-
-                                    pattern = os.path.join(
-                                        folder, f"*{activity_id}*.fit"
-                                    )
+                                    pattern = os.path.join(folder, f"*{activity_id}*.fit")
                                     matches = glob.glob(pattern)
                                     if matches:
-                                        print(
-                                            f"[DEBUG] {activity_id}: Found matching files: {matches}"
-                                        )
                                         try:
                                             os.rename(matches[0], target_path)
                                         except FileExistsError:
@@ -828,43 +804,25 @@ async def download_garmin_data(
                         elif file_info.filename.endswith(
                             ".tcx"
                         ) or file_info.filename.uppercase().endswith(".TCX"):
-                            # TCX format also valid for upload - save as {id}.tcx
                             extracted_path = os.path.join(folder, file_info.filename)
                             target_path = os.path.join(folder, f"{activity_id}.tcx")
-                            print(
-                                f"[DEBUG] {activity_id}: Found TCX in ZIP: {file_info.filename}"
-                            )
                             if extracted_path != target_path:
-                                try:
-                                    os.rename(extracted_path, target_path)
-                                except Exception as rename_err:
-                                    print(
-                                        f"[DEBUG] {activity_id}: Rename TCX failed: {rename_err}"
-                                    )
+                                os.rename(extracted_path, target_path)
                         else:
                             extracted_path = os.path.join(folder, file_info.filename)
                             if os.path.exists(extracted_path):
                                 os.remove(extracted_path)
-                                print(
-                                    f"[DEBUG] {activity_id}: Removed non-FIT/TCX/GPX file: {file_info.filename}"
-                                )
                     zip_file.close()
                     os.remove(file_path)
-                except zipfile.BadZipFile as e:
-                    print(f"[DEBUG] {activity_id}: Bad ZIP file: {e}")
                 except Exception as e:
-                    print(f"[DEBUG] {activity_id}: Error processing ZIP: {e}")
+                    pass  # Silently handle ZIP errors to reduce log noise
             else:
                 # It's a direct FIT file, just rename .zip to .fit
-                print(
-                    f"[DEBUG] {activity_id}: File is direct FIT format, renaming {file_path} -> {folder}/{activity_id}.fit"
-                )
                 target_path = os.path.join(folder, f"{activity_id}.fit")
                 try:
                     os.rename(file_path, target_path)
-                    print(f"[DEBUG] Direct FIT renamed: {file_path} -> {target_path}")
-                except Exception as rename_err:
-                    print(f"[DEBUG] Direct FIT rename failed: {rename_err}")
+                except Exception:
+                    pass  # Silently handle rename errors
     except Exception as e:
         print(f"Failed to download activity {activity_id}: {str(e)}")
         traceback.print_exc()
