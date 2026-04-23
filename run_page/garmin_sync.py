@@ -765,6 +765,7 @@ async def download_garmin_data(
             file_data = add_summary_info(file_data, summary_infos.get(activity_id))
         file_path = os.path.join(folder, f"{activity_id}.{file_type}")
         need_unzip = False
+        result_type = file_type.upper()
         if file_type == "fit":
             file_path = os.path.join(folder, f"{activity_id}.zip")
             need_unzip = True
@@ -780,6 +781,7 @@ async def download_garmin_data(
                         if file_info.filename.endswith(".fit"):
                             extracted_path = os.path.join(folder, file_info.filename)
                             target_path = os.path.join(folder, f"{activity_id}.fit")
+                            result_type = "FIT"
                             if extracted_path != target_path:
                                 try:
                                     os.rename(extracted_path, target_path)
@@ -802,6 +804,7 @@ async def download_garmin_data(
                             target_path = os.path.join(
                                 FOLDER_DICT["gpx"], f"{activity_id}.gpx"
                             )
+                            result_type = "GPX"
                             if extracted_path != target_path:
                                 os.rename(extracted_path, target_path)
                         elif file_info.filename.endswith(
@@ -809,6 +812,7 @@ async def download_garmin_data(
                         ) or file_info.filename.uppercase().endswith(".TCX"):
                             extracted_path = os.path.join(folder, file_info.filename)
                             target_path = os.path.join(folder, f"{activity_id}.tcx")
+                            result_type = "TCX"
                             if extracted_path != target_path:
                                 os.rename(extracted_path, target_path)
                         else:
@@ -818,16 +822,18 @@ async def download_garmin_data(
                     zip_file.close()
                     os.remove(file_path)
                 except Exception as e:
-                    pass  # Silently handle ZIP errors to reduce log noise
+                    print(f"[DEBUG] {activity_id}: ZIP error: {e}")
             else:
                 # It's a direct FIT file, just rename .zip to .fit
+                result_type = "FIT"
                 target_path = os.path.join(folder, f"{activity_id}.fit")
                 try:
                     os.rename(file_path, target_path)
-                except Exception:
-                    pass  # Silently handle rename errors
+                except Exception as e:
+                    print(f"[DEBUG] {activity_id}: Direct FIT rename error: {e}")
+        print(f"[DEBUG] {activity_id}: Downloaded ({result_type})")
     except Exception as e:
-        print(f"Failed to download activity {activity_id}: {str(e)}")
+        print(f"[DEBUG] {activity_id}: Download failed: {e}")
         traceback.print_exc()
 
 
