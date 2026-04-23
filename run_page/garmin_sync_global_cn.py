@@ -25,17 +25,39 @@ from garmin_sync import (
 from utils import make_activities_file
 
 
-async def get_cn_existing_ids(cn_client):
-    """Get activity IDs that already exist in Garmin CN to avoid duplicates"""
+async def get_cn_existing_timestamps(cn_client):
+    """Get activity timestamps that already exist in Garmin CN to avoid duplicates.
+
+    NOTE: COM and CN have different activity IDs for the same activity.
+    We use startTimeGMT + distance to match activities across platforms.
+    """
     garmin_cn = Garmin(cn_client, "CN", False)
-    cn_activity_ids = await get_activity_id_list(garmin_cn)
-    print(f"Found {len(cn_activity_ids)} existing activities in Garmin CN")
-    return set(cn_activity_ids)
+    cn_timestamps = set()
+
+    # Get all CN activities in batches
+    start = 0
+    limit = 100
+    while True:
+        activities = await garmin_cn.get_activities(start, limit)
+        if not activities:
+            break
+        for act in activities:
+            # Use startTimeGMT + distance as unique identifier
+            start_time = act.get("startTimeGMT", "")
+            distance = act.get("distance", 0) or 0
+            if start_time:
+                cn_timestamps.add((start_time, distance))
+        if len(activities) < limit:
+            break
+        start += limit
+
+    print(f"Found {len(cn_timestamps)} existing activities in Garmin CN")
+    return cn_timestamps
 
 
 async def download_with_cn_filter(
     com_client,
-    cn_existing_ids,
+    cn_existing_timestamps,
     is_only_running,
     folder,
     file_type,
@@ -45,8 +67,36 @@ async def download_with_cn_filter(
     garmin_com = Garmin(com_client, "COM", is_only_running)
     activity_ids = await get_activity_id_list(garmin_com)
 
-    # Filter out activities that already exist in CN
-    to_generate_ids = [id for id in activity_ids if id not in cn_existing_ids]
+    # Filter out activities that already exist in CN (match by time + distance)
+    to_generate_ids = []
+    to_generate_garmin_id2title = {}
+    garmin_summary_infos_dict = {}
+
+    for id in activity_ids:
+        try:
+            activity_summary = await garmin_com.get_activity_summary(id)
+            start_time = activity_summary.get(
+                "startTimeGMT", ""
+            ) or activity_summary.get("summaryDTO", {}).get("startTimeGMT", "")
+            distance = (
+                activity_summary.get("distance", 0)
+                or activity_summary.get("summaryDTO", {}).get("distance", 0)
+                or 0
+            )
+
+            # Check if this activity already exists in CN (by time + distance)
+            if (start_time, distance) in cn_existing_timestamps:
+                continue
+
+            activity_title = activity_summary.get("activityName", "")
+            to_generate_ids.append(id)
+            to_generate_garmin_id2title[id] = activity_title
+            garmin_summary_infos_dict[id] = get_garmin_summary_infos(
+                activity_summary, id
+            )
+        except Exception as e:
+            print(f"Failed to get activity summary {id}: {str(e)}")
+            continue
 
     # Apply max_activities limit only if explicitly set (not 0)
     if max_activities > 0 and len(to_generate_ids) > max_activities:
@@ -55,21 +105,7 @@ async def download_with_cn_filter(
             f"{len(to_generate_ids)} new activities to be downloaded (limited to {max_activities})"
         )
     else:
-        print(f"{len(to_generate_ids)} new activities to be downloaded (no limit)")
-
-    to_generate_garmin_id2title = {}
-    garmin_summary_infos_dict = {}
-    for id in to_generate_ids:
-        try:
-            activity_summary = await garmin_com.get_activity_summary(id)
-            activity_title = activity_summary.get("activityName", "")
-            to_generate_garmin_id2title[id] = activity_title
-            garmin_summary_infos_dict[id] = get_garmin_summary_infos(
-                activity_summary, id
-            )
-        except Exception as e:
-            print(f"Failed to get activity summary {id}: {str(e)}")
-            continue
+        print(f"{len(to_generate_ids)} new activities to be downloaded")
 
     start_time = time.time()
     await gather_with_concurrency(
@@ -167,11 +203,13 @@ if __name__ == "__main__":
         print("[main] Cannot proceed without CN client. Exiting.")
         sys.exit(1)
 
-    # Step 2: Get existing activity IDs from Garmin CN
+    # Step 2: Get existing activity timestamps from Garmin CN
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    cn_existing_ids = loop.run_until_complete(get_cn_existing_ids(garmin_cn_client))
-    print(f"Garmin CN already has {len(cn_existing_ids)} activities")
+    cn_existing_timestamps = loop.run_until_complete(
+        get_cn_existing_timestamps(garmin_cn_client)
+    )
+    print(f"Garmin CN already has {len(cn_existing_timestamps)} activities")
 
     # Step 3: Login to Garmin COM and download new activities
     garmin_com_client = None
@@ -190,7 +228,7 @@ if __name__ == "__main__":
     future = asyncio.ensure_future(
         download_with_cn_filter(
             garmin_com_client,
-            cn_existing_ids,
+            cn_existing_timestamps,
             is_only_running,
             folder,
             "fit",
