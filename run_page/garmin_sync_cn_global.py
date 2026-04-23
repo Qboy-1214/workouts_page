@@ -91,6 +91,9 @@ if __name__ == "__main__":
         if os.path.exists(os.path.join(FIT_FOLDER, f"{i}.fit")):
             # upload fit files
             to_upload_files.append(os.path.join(FIT_FOLDER, f"{i}.fit"))
+        elif os.path.exists(os.path.join(FIT_FOLDER, f"{i}.tcx")):
+            # upload tcx files (garminconnect may return tcx instead of fit)
+            to_upload_files.append(os.path.join(FIT_FOLDER, f"{i}.tcx"))
         elif os.path.exists(os.path.join(GPX_FOLDER, f"{i}.gpx")):
             # upload gpx files which are manually uploaded to garmin connect
             to_upload_files.append(os.path.join(GPX_FOLDER, f"{i}.gpx"))
@@ -113,10 +116,13 @@ if __name__ == "__main__":
         loop.run_until_complete(future)
 
     # Step 2:
-    # Generate track from fit/gpx file
+    # Generate track from fit/gpx/tcx file
     make_activities_file(
         SQL_FILE, GPX_FOLDER, JSON_FILE, file_suffix="gpx", activity_title_dict=id2title
     )
     make_activities_file(
         SQL_FILE, FIT_FOLDER, JSON_FILE, file_suffix="fit", activity_title_dict=id2title
+    )
+    make_activities_file(
+        SQL_FILE, FIT_FOLDER, JSON_FILE, file_suffix="tcx", activity_title_dict=id2title
     )

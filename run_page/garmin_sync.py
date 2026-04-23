@@ -873,11 +873,21 @@ async def download_garmin_data(
                             target_path = os.path.join(FOLDER_DICT["gpx"], f"{activity_id}.gpx")
                             if extracted_path != target_path:
                                 os.rename(extracted_path, target_path)
+                        elif file_info.filename.endswith(".tcx") or file_info.filename.uppercase().endswith(".TCX"):
+                            # TCX format also valid for upload - save as {id}.tcx
+                            extracted_path = os.path.join(folder, file_info.filename)
+                            target_path = os.path.join(folder, f"{activity_id}.tcx")
+                            print(f"[DEBUG] {activity_id}: Found TCX in ZIP: {file_info.filename}")
+                            if extracted_path != target_path:
+                                try:
+                                    os.rename(extracted_path, target_path)
+                                except Exception as rename_err:
+                                    print(f"[DEBUG] {activity_id}: Rename TCX failed: {rename_err}")
                         else:
                             extracted_path = os.path.join(folder, file_info.filename)
                             if os.path.exists(extracted_path):
                                 os.remove(extracted_path)
-                                print(f"[DEBUG] {activity_id}: Removed non-FIT/GPX file: {file_info.filename}")
+                                print(f"[DEBUG] {activity_id}: Removed non-FIT/TCX/GPX file: {file_info.filename}")
                     zip_file.close()
                     os.remove(file_path)
                 except zipfile.BadZipFile as e:
