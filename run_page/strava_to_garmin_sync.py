@@ -101,20 +101,17 @@ if __name__ == "__main__":
         help="_strava4_session cookie value for strava web login",
     )
     parser.add_argument(
-        "--is-cn",
-        dest="is_cn",
-        action="store_true",
-        help="if garmin account is cn",
-    )
-    parser.add_argument(
         "--use_fake_garmin_device",
         action="store_true",
         default=False,
         help="whether to use a faked Garmin device",
     )
+    # Note: is_cn removed - strava_to_garmin_sync now only syncs to COM (Garmin International).
+        # For CN sync, run garmin_sync_cn_global.py separately after COM sync completes.
     options = parser.parse_args()
 
-    print(f"[main] STRAVA_TO_GARMIN_SYNC START, is_cn={options.is_cn}")
+    print(f"[main] STRAVA_TO_GARMIN_SYNC START - syncing to COM (Garmin International)")
+    print("  Note: For CN sync, run garmin_sync_cn_global.py separately after COM sync completes")
 
     strava_client = make_strava_client(
         options.strava_client_id,
@@ -219,15 +216,12 @@ if __name__ == "__main__":
             "Must provide STRAVA_JWT (can be JWT token or _strava4_session cookie), or both STRAVA_EMAIL and STRAVA_PASSWORD"
         )
 
-    garmin_auth_domain = "CN" if options.is_cn else "COM"
+    # Always sync to COM (Garmin International)
+    garmin_auth_domain = "COM"
 
     # Priority: environment variables > command line args
-    if garmin_auth_domain == "CN":
-        garmin_username = os.getenv("GARMIN_CN_USERNAME") or options.garmin_username
-        garmin_password = os.getenv("GARMIN_CN_PASSWORD") or options.garmin_password
-    else:
-        garmin_username = os.getenv("GARMIN_COM_USERNAME") or options.garmin_username
-        garmin_password = os.getenv("GARMIN_COM_PASSWORD") or options.garmin_password
+    garmin_username = os.getenv("GARMIN_COM_USERNAME") or options.garmin_username
+    garmin_password = os.getenv("GARMIN_COM_PASSWORD") or options.garmin_password
 
     print(
         f"[main] Garmin auth domain: {garmin_auth_domain}, username set: {bool(garmin_username)}, password set: {bool(garmin_password)}"
@@ -238,7 +232,7 @@ if __name__ == "__main__":
             "Missing Garmin credentials: please provide --garmin-username/--garmin-password"
         )
         print(
-            "Or set environment variables: GARMIN_COM_USERNAME/GARMIN_CN_USERNAME and GARMIN_COM_PASSWORD/GARMIN_CN_PASSWORD"
+            "Or set environment variables: GARMIN_COM_USERNAME and GARMIN_COM_PASSWORD"
         )
         sys.exit(1)
 

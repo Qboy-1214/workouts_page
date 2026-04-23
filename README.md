@@ -93,8 +93,8 @@ env:
 | `keep` | Sync from Keep | KEEP_MOBILE, KEEP_PASSWORD |
 | `coros` | Sync from Coros | COROS_ACCOUNT, COROS_PASSWORD |
 | `nike` | Sync from Nike | NIKE_REFRESH_TOKEN |
-| `strava_to_garmin` | Download from Strava and upload to Garmin | STRAVA_*, GARMIN_*, STRAVA_JWT |
-| `garmin_to_strava` | Upload from Garmin to Strava | STRAVA_*, GARMIN_* |
+| `strava_to_garmin` | Download from Strava and upload to Garmin International | STRAVA_*, GARMIN_COM_*, STRAVA_JWT |
+| `garmin_cn_global` | Sync Garmin China → Garmin International (after strava_to_garmin) | GARMIN_CN_*, GARMIN_COM_* |
 
 ---
 

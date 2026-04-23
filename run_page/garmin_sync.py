@@ -730,7 +730,6 @@ class Garmin:
         with open(file, "rb") as f:
             file_body = f.read()
 
-        # Use garminconnect (works for both COM and CN regions)
         import tempfile
 
         ext = os.path.splitext(file)[-1].lower().lstrip(".")
@@ -738,8 +737,21 @@ class Garmin:
             tmp.write(file_body)
             tmp_path = tmp.name
         try:
-            result = await asyncio.to_thread(self._client.upload_activity, tmp_path)
-            print("garmin upload success: ", result)
+            if self._use_garminconnect:
+                # COM: use garminconnect
+                result = await asyncio.to_thread(self._client.upload_activity, tmp_path)
+                print("garmin upload success: ", result)
+            else:
+                # CN: use garth with httpx
+                with open(tmp_path, "rb") as f:
+                    files = {"file": (os.path.basename(tmp_path), f, "application/octet-stream")}
+                    response = await self.req.post(
+                        self.upload_url, files=files, headers=self.headers
+                    )
+                    if response.status_code in (200, 201, 202, 204):
+                        print(f"garmin CN upload success: {response.status_code}")
+                    else:
+                        print(f"garmin CN upload failed: {response.status_code} - {response.text}")
         except Exception as e:
             print("garmin upload failed: ", e)
         finally:

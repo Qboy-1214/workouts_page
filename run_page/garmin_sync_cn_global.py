@@ -1,6 +1,11 @@
 """
-Python 3 API wrapper for Garmin Connect to get your statistics.
-Copy most code from https://github.com/cyberjunky/python-garminconnect
+Sync activities from Garmin International (COM) to Garmin China (CN).
+
+Workflow:
+1. Download activities from Garmin COM
+2. Upload to Garmin CN
+
+This is used after strava_to_garmin_sync.py syncs from Strava to Garmin COM.
 """
 
 import argparse
@@ -15,7 +20,7 @@ from garmin_sync import download_new_activities
 from utils import make_activities_file
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Sync Garmin COM -> CN")
     parser.add_argument("--cn-username", dest="cn_username", help="Garmin CN username")
     parser.add_argument("--cn-password", dest="cn_password", help="Garmin CN password")
     parser.add_argument(
@@ -50,8 +55,7 @@ if __name__ == "__main__":
         sys.exit(1)
 
     # Step 1:
-    # Sync all activities from Garmin CN to Garmin Global in FIT format
-    # If the activity is manually imported with a GPX, the GPX file will be synced
+    # Download activities from Garmin COM to local folder
 
     # load synced activity list
     downloaded_fit = get_downloaded_ids(FIT_FOLDER)
@@ -63,16 +67,16 @@ if __name__ == "__main__":
     if not os.path.exists(folder):
         os.mkdir(folder)
 
-    # Login to Garmin CN
-    print("Logging into Garmin CN...")
-    garmin_cn_client = restore_or_login(cn_username, cn_password, "CN")
+    # Login to Garmin COM
+    print("Logging into Garmin COM (International)...")
+    garmin_com_client = restore_or_login(com_username, com_password, "COM")
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     future = asyncio.ensure_future(
         download_new_activities(
-            garmin_cn_client,
-            "CN",
+            garmin_com_client,
+            "COM",
             downloaded_activity,
             is_only_running,
             folder,
@@ -91,19 +95,22 @@ if __name__ == "__main__":
             # upload gpx files which are manually uploaded to garmin connect
             to_upload_files.append(os.path.join(GPX_FOLDER, f"{i}.gpx"))
 
-    print("Files to sync:" + " ".join(to_upload_files))
+    print(f"Files to upload to CN: {len(to_upload_files)}")
+    if to_upload_files:
+        print("Files: " + " ".join(to_upload_files))
 
-    # Login to Garmin Global
-    print("Logging into Garmin Global...")
-    garmin_global_client = restore_or_login(com_username, com_password, "COM")
-    garmin_global_wrapper = Garmin(garmin_global_client, "COM", is_only_running)
+    if to_upload_files:
+        # Login to Garmin CN
+        print("Logging into Garmin CN...")
+        garmin_cn_client = restore_or_login(cn_username, cn_password, "CN")
+        garmin_cn_wrapper = Garmin(garmin_cn_client, "CN", is_only_running)
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    future = asyncio.ensure_future(
-        garmin_global_wrapper.upload_activities_files(to_upload_files)
-    )
-    loop.run_until_complete(future)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        future = asyncio.ensure_future(
+            garmin_cn_wrapper.upload_activities_files(to_upload_files)
+        )
+        loop.run_until_complete(future)
 
     # Step 2:
     # Generate track from fit/gpx file
