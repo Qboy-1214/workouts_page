@@ -54,3 +54,11 @@ distribution = true
 [tool.black]
 target-version = ["py312"]
 line-length = 88
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]  # Basic rules only
+ignore = []
