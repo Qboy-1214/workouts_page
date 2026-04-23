@@ -88,7 +88,6 @@ async def download_with_cn_filter(
     garmin_id2type = {}  # Collect activity type for post-upload CN update
 
     filtered_count = 0  # Track how many activities were filtered (already exist in CN)
-    _debug_printed = 0  # Print first 3 COM timestamps for debugging
     for id in activity_ids:
         try:
             activity_summary = await garmin_com.get_activity_summary(id)
@@ -100,9 +99,6 @@ async def download_with_cn_filter(
                 or activity_summary.get("summaryDTO", {}).get("distance", 0)
                 or 0
             )
-            if _debug_printed < 3:
-                print(f"[DEBUG] COM activity {id}: start_time='{start_time}', distance={distance}")
-                _debug_printed += 1
 
             # Check if this activity already exists in CN (by time + distance with tolerance)
             # Use distance tolerance of 1.0 meters to handle floating point precision differences
@@ -112,7 +108,6 @@ async def download_with_cn_filter(
             if start_time:
                 for cn_time, cn_dist in cn_existing_timestamps:
                     # Normalize timestamps for comparison (strip sub-second precision and timezone)
-                    import re
                     cn_normalized = re.sub(r'\.\d+(.*?)$', '', cn_time).split('+')[0].split('Z')[0]
                     com_normalized = re.sub(r'\.\d+(.*?)$', '', start_time).split('+')[0].split('Z')[0]
                     if cn_normalized == com_normalized:
@@ -295,47 +290,63 @@ async def upload_activities_to_garmin_cn(garmin_cn_wrapper, files, id2title, id2
 
 def _extract_start_time_from_file(filepath):
     """Extract start time from FIT/GPX/TCX file for CN activity matching."""
+    import datetime as dt
     import struct
 
     ext = os.path.splitext(filepath)[-1].lower()
 
     try:
         if ext == ".fit":
-            # FIT files store start time as a uint32 (timestamp) at a known offset
-            # Read file and look for FIT header + data
             with open(filepath, "rb") as f:
                 data = f.read()
 
-            # Try to find the start_time field in FIT file
-            # FIT epoch: 631065600000 (Dec 31, 1989 00:00:00 UTC in ms)
-            # Look for timestamps in a reasonable range (2020-2030)
-            # This is a simplified approach - look for the timestamp value
-            import datetime as dt
+            # FIT epoch: 631065600000 ms since Jan 1, 1989 00:00:00 UTC
+            # We search for uint32 timestamps interpreted as Unix seconds
+            # and convert FIT uint32 timestamps (ms) to Unix seconds
+            FIT_EPOCH_MS = 631065600000
+            min_ts_ms = int(dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc).timestamp() * 1000)
+            max_ts_ms = int(dt.datetime(2030, 12, 31, tzinfo=dt.timezone.utc).timestamp() * 1000)
 
-            min_ts = int(dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc).timestamp())
-            max_ts = int(dt.datetime(2030, 12, 31, tzinfo=dt.timezone.utc).timestamp())
-
-            # Search for uint32 timestamps in the valid range
+            # Search for uint32 values that could be FIT ms timestamps
             data_words = struct.unpack(f"<{len(data)//4}I", data[:(len(data)//4)*4])
-            for i, val in enumerate(data_words):
-                if min_ts <= val <= max_ts:
-                    # Found a valid timestamp - this is likely the start time
-                    start_dt = dt.datetime.fromtimestamp(val, tz=dt.timezone.utc)
+            for val in data_words:
+                if min_ts_ms <= val <= max_ts_ms:
+                    unix_sec = (val - FIT_EPOCH_MS) / 1000.0
+                    start_dt = dt.datetime.fromtimestamp(unix_sec, tz=dt.timezone.utc)
                     return start_dt.strftime("%Y-%m-%dT%H:%M:%S")
 
-        elif ext in (".gpx", ".tcx"):
-            # Parse XML to find time element
+        elif ext == ".tcx":
             try:
                 import xml.etree.ElementTree as ET
 
                 tree = ET.parse(filepath)
                 root = tree.getroot()
 
-                # GPX: {http://www.topografix.com/GPX/1/1}time or {http://www.garmin.com/xmlschemas/GpxExtensions/v3}Time
+                # In TCX, <Id> at Activity level contains the activity start time
+                # Format: <Id>2026-04-21T14:33:44Z</Id>
+                for elem in root.iter():
+                    tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+                    if tag == "Id" and elem.text:
+                        time_str = elem.text.strip()
+                        try:
+                            dt_obj = dt.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+                            return dt_obj.strftime("%Y-%m-%dT%H:%M:%S")
+                        except ValueError:
+                            pass
+            except Exception:
+                pass
+
+        elif ext == ".gpx":
+            try:
+                import xml.etree.ElementTree as ET
+
+                tree = ET.parse(filepath)
+                root = tree.getroot()
+
+                # GPX: <time> element at track/segment level
                 for elem in root.iter():
                     tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
                     if tag == "time" and elem.text:
-                        # Parse and normalize
                         time_str = elem.text.strip()
                         try:
                             dt_obj = dt.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
