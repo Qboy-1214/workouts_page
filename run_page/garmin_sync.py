@@ -756,6 +756,9 @@ class Garmin:
                     )
                     if response.status_code in (200, 201, 202, 204):
                         print(f"garmin CN upload success: {response.status_code}")
+                    elif "Duplicate Activity" in response.text:
+                        # Duplicate Activity is expected - activity was already uploaded before
+                        print(f"garmin CN upload skipped (Duplicate Activity): {response.status_code}")
                     else:
                         print(
                             f"garmin CN upload failed: {response.status_code} - {response.text}"
@@ -1092,14 +1095,16 @@ def restore_or_login(username, password, auth_domain):
 
 
 async def download_new_activities(
-    client, auth_domain, downloaded_ids, is_only_running, folder, file_type
+    client, auth_domain, downloaded_ids, is_only_running, folder, file_type, max_activities=10
 ):
     garmin_client = Garmin(client, auth_domain, is_only_running)
     # because I don't find a para for after time, so I use garmin-id as filename
     # to find new run to generate
     activity_ids = await get_activity_id_list(garmin_client)
     to_generate_garmin_ids = list(set(activity_ids) - set(downloaded_ids))
-    print(f"{len(to_generate_garmin_ids)} new activities to be downloaded")
+    # Limit to most recent activities
+    to_generate_garmin_ids = to_generate_garmin_ids[:max_activities]
+    print(f"{len(to_generate_garmin_ids)} new activities to be downloaded (limited to {max_activities} most recent)")
 
     to_generate_garmin_id2title = {}
     garmin_summary_infos_dict = {}
@@ -1166,11 +1171,19 @@ if __name__ == "__main__":
         default="gpx",
         help="to download personal documents or ebook",
     )
+    parser.add_argument(
+        "--max-activities",
+        dest="max_activities",
+        type=int,
+        default=10,
+        help="maximum number of activities to download (default: 10)",
+    )
     options = parser.parse_args()
     secret_string = options.secret_string
     auth_domain = "CN" if options.is_cn else "COM"  # Default to COM if not specified
     file_type = options.download_file_type
     is_only_running = options.only_run
+    max_activities = options.max_activities
 
     # Priority: environment variables > secret_string
     if auth_domain == "CN":
@@ -1227,6 +1240,7 @@ if __name__ == "__main__":
             is_only_running,
             folder,
             file_type,
+            max_activities=max_activities,
         )
     )
     loop.run_until_complete(future)
