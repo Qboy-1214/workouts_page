@@ -1,7 +1,7 @@
 """
 Python 3 API wrapper for Garmin Connect to get your statistics.
-International (COM): uses garminconnect library
-China (CN): uses garth library (暂时保留)
+Uses garminconnect library for both COM and CN regions.
+CN region is supported via is_cn=True parameter in GarminConnectLib constructor.
 """
 
 import argparse
@@ -17,7 +17,6 @@ import zipfile
 from lxml import etree
 
 import aiofiles
-import httpx
 from garminconnect import (
     Garmin as GarminConnectLib,
     GarminConnectAuthenticationError,
@@ -28,31 +27,10 @@ from config import FOLDER_DICT, JSON_FILE, SQL_FILE
 from garmin_device_adaptor import process_garmin_data
 from utils import make_activities_file_only
 
-# garth is only used for China region
-import garth
-
 # logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-TIME_OUT = httpx.Timeout(240.0, connect=360.0)
-GARMIN_COM_URL_DICT = {
-    "SSO_URL_ORIGIN": "https://sso.garmin.com",
-    "SSO_URL": "https://sso.garmin.com/sso",
-    "MODERN_URL": "https://connectapi.garmin.com",
-    "SIGNIN_URL": "https://sso.garmin.com/sso/signin",
-    "UPLOAD_URL": "https://connectapi.garmin.com/upload-service/upload/",
-    "ACTIVITY_URL": "https://connectapi.garmin.com/activity-service/activity/{activity_id}",
-}
-
-GARMIN_CN_URL_DICT = {
-    "SSO_URL_ORIGIN": "https://sso.garmin.com",
-    "SSO_URL": "https://sso.garmin.cn/sso",
-    "MODERN_URL": "https://connectapi.garmin.cn",
-    "SIGNIN_URL": "https://sso.garmin.cn/sso/signin",
-    "UPLOAD_URL": "https://connectapi.garmin.cn/upload-service/upload/",
-    "ACTIVITY_URL": "https://connectapi.garmin.cn/activity-service/activity/{activity_id}",
-}
-
+TIME_OUT = 240.0
 
 # Strava to Garmin sport type mapping (Garmin compatible format)
 # Garmin typeKey reference: https://github.com/pe-st/garmin-connect-export/blob/master/json/activityTypes.json
@@ -216,8 +194,7 @@ def fix_tcx_sport_type(file_path, strava_sport_type=None):
 
 class Garmin:
     """
-    Garmin client for both COM (garminconnect) and CN (garth) regions.
-    COM uses garminconnect library, CN uses garth library.
+    Garmin client using garminconnect library for both COM and CN regions.
     """
 
     def __init__(self, client, auth_domain, is_only_running=False):
@@ -226,72 +203,7 @@ class Garmin:
         """
         self.auth_domain = auth_domain.upper() if auth_domain else "COM"
         self.is_only_running = is_only_running
-        self._client = client  # may be None if login failed
-
-        if client is None:
-            # Login failed or not attempted
-            if self.auth_domain == "CN":
-                self._use_garminconnect = False
-                self.URL_DICT = GARMIN_CN_URL_DICT
-                self.modern_url = self.URL_DICT.get("MODERN_URL")
-                self.upload_url = self.URL_DICT.get("UPLOAD_URL")
-                self.activity_url = self.URL_DICT.get("ACTIVITY_URL")
-            else:
-                # COM uses garminconnect
-                self._use_garminconnect = True
-                self.modern_url = GARMIN_COM_URL_DICT.get("MODERN_URL")
-                self.upload_url = GARMIN_COM_URL_DICT.get("UPLOAD_URL")
-            return
-
-        if self.auth_domain == "CN":
-            # CN uses garth
-            self._use_garminconnect = False
-            self.req = httpx.AsyncClient(timeout=TIME_OUT)
-            self.URL_DICT = GARMIN_CN_URL_DICT
-            garth.configure(domain="garmin.cn", ssl_verify=False)
-            garth.client.loads(client)  # client is secret_string for garth
-            if garth.client.oauth2_token.expired:
-                garth.client.refresh_oauth2()
-            self.headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.88 Safari/537.36",
-                "origin": self.URL_DICT.get("SSO_URL_ORIGIN"),
-                "nk": "NT",
-                "Authorization": str(garth.client.oauth2_token),
-            }
-            self.upload_url = self.URL_DICT.get("UPLOAD_URL")
-            self.activity_url = self.URL_DICT.get("ACTIVITY_URL")
-            self.modern_url = self.URL_DICT.get("MODERN_URL")
-        else:
-            # COM uses garminconnect
-            self._use_garminconnect = True
-            self.modern_url = GARMIN_COM_URL_DICT.get("MODERN_URL")
-            self.upload_url = GARMIN_COM_URL_DICT.get("UPLOAD_URL")
-
-    async def fetch_data(self, url, retrying=False):
-        """
-        Fetch and return data (only for CN region using garth)
-        """
-        try:
-            response = await self.req.get(url, headers=self.headers)
-            if response.status_code == 429:
-                raise GarminConnectTooManyRequestsError("Too many requests")
-            logger.debug(f"fetch_data got response code {response.status_code}")
-            response.raise_for_status()
-            return response.json()
-        except Exception as err:
-            print(err)
-            if retrying:
-                logger.debug(
-                    "Exception occurred during data retrieval, relogin without effect: %s"
-                    % err
-                )
-                raise GarminConnectConnectionError("Error connecting") from err
-            else:
-                logger.debug(
-                    "Exception occurred during data retrieval - perhaps session expired - trying relogin: %s"
-                    % err
-                )
-                await self.fetch_data(url, retrying=True)
+        self._client = client  # GarminConnectLib instance
 
     async def get_activities(self, start, limit):
         """
@@ -300,9 +212,10 @@ class Garmin:
         if self._client is None:
             print("[Garmin.get_activities] No garmin client, returning empty list")
             return []
-        if self._use_garminconnect:
-            # COM: use garminconnect
-            activities = self._client.get_activities(start, limit)
+        try:
+            activities = await asyncio.to_thread(
+                self._client.get_activities, start, limit
+            )
             # Filter by activity type if needed
             if self.is_only_running:
                 activities = [
@@ -311,12 +224,9 @@ class Garmin:
                     if a.get("activityType", {}).get("typeKey") == "running"
                 ]
             return activities
-        else:
-            # CN: use garth via httpx
-            url = f"{self.modern_url}/activitylist-service/activities/search/activities?start={start}&limit={limit}"
-            if self.is_only_running:
-                url = url + "&activityType=running"
-            return await self.fetch_data(url)
+        except Exception as e:
+            print(f"[Garmin.get_activities] Error: {e}")
+            return []
 
     async def get_activity_summary(self, activity_id):
         """
@@ -325,21 +235,21 @@ class Garmin:
         if self._client is None:
             print("[Garmin.get_activity_summary] No garmin client, returning empty")
             return {}
-        if self._use_garminconnect:
-            # COM: use garminconnect
+        try:
             # activity_id must be int for garminconnect
-            return self._client.get_activity(int(activity_id))
-        else:
-            # CN: use garth via httpx
-            url = f"{self.modern_url}/activity-service/activity/{activity_id}"
-            return await self.fetch_data(url)
+            return await asyncio.to_thread(self._client.get_activity, int(activity_id))
+        except Exception as e:
+            print(f"[Garmin.get_activity_summary] Error: {e}")
+            return {}
 
     async def download_activity(self, activity_id, file_type="gpx"):
         """
         Download activity file (GPX, TCX, FIT)
         """
-        if self._use_garminconnect:
-            # COM: use garminconnect
+        if self._client is None:
+            print("[Garmin.download_activity] No garmin client, returning empty")
+            return b""
+        try:
             # activity_id must be int for garminconnect
             # Convert file_type string to garminconnect enum
             fmt_map = {
@@ -348,16 +258,12 @@ class Garmin:
                 "fit": GarminConnectLib.ActivityDownloadFormat.ORIGINAL,
             }
             dl_fmt = fmt_map.get(file_type, GarminConnectLib.ActivityDownloadFormat.GPX)
-            return self._client.download_activity(int(activity_id), dl_fmt=dl_fmt)
-        else:
-            # CN: use garth via httpx
-            url = f"{self.modern_url}/download-service/export/{file_type}/activity/{activity_id}"
-            if file_type == "fit":
-                url = f"{self.modern_url}/download-service/files/activity/{activity_id}"
-            logger.info(f"Download activity from {url}")
-            response = await self.req.get(url, headers=self.headers)
-            response.raise_for_status()
-            return response.read()
+            return await asyncio.to_thread(
+                self._client.download_activity, int(activity_id), dl_fmt=dl_fmt
+            )
+        except Exception as e:
+            print(f"[Garmin.download_activity] Error: {e}")
+            return b""
 
     async def upload_activities_original_from_strava(
         self, datas, use_fake_garmin_device=False
@@ -406,353 +312,42 @@ class Garmin:
             # Determine file extension from original filename
             ext = os.path.splitext(data.filename)[-1].lower().lstrip(".")
 
-            if self._use_garminconnect:
-                # COM: use garminconnect (requires file path, not raw data)
-                import tempfile
+            # Use garminconnect (works for both COM and CN regions)
+            import tempfile
 
-                # process_garmin_data may return bytes or BytesIO
-                data_bytes = (
-                    file_body.read() if hasattr(file_body, "read") else file_body
+            # process_garmin_data may return bytes or BytesIO
+            data_bytes = file_body.read() if hasattr(file_body, "read") else file_body
+            with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
+                tmp.write(data_bytes)
+                tmp_path = tmp.name
+            try:
+                result = await asyncio.to_thread(self._client.upload_activity, tmp_path)
+                print("garmin upload success: ", result)
+
+                # Set correct activity type after upload
+                print(
+                    f"[DEBUG] Checking sport type: strava_sport_type={strava_sport_type}"
                 )
-                with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
-                    tmp.write(data_bytes)
-                    tmp_path = tmp.name
-                try:
-                    result = self._client.upload_activity(tmp_path)
-                    print("garmin upload success: ", result)
 
-                    # Set correct activity type after upload
-                    print(
-                        f"[DEBUG] Checking sport type: strava_sport_type={strava_sport_type}"
-                    )
-
-                    # Determine the final Garmin sport type
-                    garmin_sport = None
-
-                    # If strava_sport_type is in mapping, use it
-                    if (
-                        strava_sport_type
-                        and strava_sport_type in STRAVA_TO_GARMIN_SPORT
-                    ):
-                        garmin_sport = STRAVA_TO_GARMIN_SPORT[strava_sport_type]
-                        print(
-                            f"[DEBUG] Sport type {strava_sport_type} mapped to garmin_sport={garmin_sport}"
-                        )
-
-                    # If strava_sport_type maps to "other" or not in mapping, try to infer from filename
-                    if not garmin_sport or garmin_sport == "other":
-                        # Try to infer sport type from filename (e.g., vr_tennis.tcx -> tennis)
-                        filename_lower = data.filename.lower()
-                        print(
-                            f"[DEBUG] Trying to infer sport from filename: {data.filename}"
-                        )
-
-                        # Common filename patterns for VR activities
-                        filename_to_sport = {
-                            "vr_tennis": "tennis_v2",
-                            "vr_riding": "virtual_ride",
-                            "vr_run": "virtual_run",
-                            "vr_row": "indoor_rowing",
-                            "tennis": "tennis_v2",
-                            "squash": "squash",
-                            "badminton": "badminton",
-                            "racquetball": "racquetball",
-                            "table_tennis": "table_tennis",
-                            "ping_pong": "table_tennis",
-                            "workout": "other",
-                        }
-
-                        for pattern, sport in filename_to_sport.items():
-                            if pattern in filename_lower:
-                                garmin_sport = sport
-                                print(
-                                    f"[DEBUG] Inferred sport from filename: {pattern} -> {sport}"
-                                )
-                                break
-
-                    if garmin_sport and garmin_sport != "other":
-                        # Get activity ID from response
-                        try:
-                            resp_data = (
-                                result.json() if hasattr(result, "json") else result
-                            )
-                            detailed = (
-                                resp_data.get("detailedImportResult", {})
-                                if isinstance(resp_data, dict)
-                                else {}
-                            )
-                            successes = (
-                                detailed.get("successes", [])
-                                if isinstance(detailed, dict)
-                                else []
-                            )
-                            upload_id = detailed.get("uploadId")
-                            upload_time = detailed.get("creationDate")
-                            upload_file_size = detailed.get("fileSize")
-                            print(
-                                f"[DEBUG] upload uploadId: {upload_id}, creationDate: {upload_time}, fileSize: {upload_file_size}"
-                            )
-
-                            activity_id = None
-                            if successes:
-                                activity_id = successes[0].get(
-                                    "internalId"
-                                ) or successes[0].get("activityId")
-                            else:
-                                # Try to find activity by activity start time from Strava
-                                print("[DEBUG] Finding activity by start time...")
-                                if activity_start_time:
-                                    try:
-                                        activity_id = None
-                                        # Extract date from activity_start_time
-                                        activity_date = (
-                                            activity_start_time.split("T")[0]
-                                            if "T" in str(activity_start_time)
-                                            else str(activity_start_time)[:10]
-                                        )
-                                        print(
-                                            f"[DEBUG] Looking for activity with start time: {activity_start_time}, date: {activity_date}"
-                                        )
-
-                                        # Retry with delays to wait for processing
-                                        for retry in range(4):
-                                            if retry > 0:
-                                                wait_time = 10 * retry
-                                                print(
-                                                    f"[DEBUG] Retry {retry}, waiting {wait_time}s..."
-                                                )
-                                                time.sleep(wait_time)
-
-                                            try:
-                                                # Get activities for the activity date
-                                                recent = (
-                                                    self._client.get_activities_by_date(
-                                                        activity_date, sortorder="desc"
-                                                    )
-                                                )
-                                                print(
-                                                    f"[DEBUG] Got {len(recent)} activities for {activity_date}"
-                                                )
-
-                                                for act in recent:
-                                                    act_id = act.get("activityId")
-                                                    act_start = act.get(
-                                                        "startTimeGMT"
-                                                    ) or act.get("startTime")
-                                                    act_title = act.get(
-                                                        "activityName"
-                                                    ) or act.get("title")
-                                                    print(
-                                                        f"[DEBUG] Checking: {act_id}, startTime: {act_start}, title: {act_title}"
-                                                    )
-
-                                                    # Match by activity start time from Strava (with 5 min tolerance)
-                                                    if (
-                                                        act_start
-                                                        and activity_start_time
-                                                    ):
-                                                        try:
-                                                            from datetime import (
-                                                                datetime,
-                                                            )
-
-                                                            # Parse times
-                                                            # Strava: "2026-04-22T14:33:44+00:00" or "2026-04-22 11:19:38+00:00"
-                                                            # Garmin: "2026-04-22 14:33:44" or "2026-04-22T14:33:44Z"
-                                                            strava_str = (
-                                                                str(activity_start_time)
-                                                                .replace("T", " ", 1)
-                                                                .split("+")[0]
-                                                                .split("Z")[0]
-                                                                .strip()
-                                                            )
-                                                            garmin_str = (
-                                                                str(act_start)
-                                                                .replace("T", " ", 1)
-                                                                .split("+")[0]
-                                                                .split("Z")[0]
-                                                                .strip()
-                                                            )
-
-                                                            # Parse datetime (handle both with and without microseconds)
-                                                            strava_dt = (
-                                                                datetime.fromisoformat(
-                                                                    strava_str
-                                                                )
-                                                            )
-                                                            if "." not in garmin_str:
-                                                                garmin_dt = datetime.strptime(
-                                                                    garmin_str,
-                                                                    "%Y-%m-%d %H:%M:%S",
-                                                                )
-                                                            else:
-                                                                garmin_dt = datetime.fromisoformat(
-                                                                    garmin_str.replace(
-                                                                        " ", "T"
-                                                                    )
-                                                                )
-
-                                                            # Calculate difference in seconds
-                                                            diff_seconds = abs(
-                                                                (
-                                                                    strava_dt
-                                                                    - garmin_dt
-                                                                ).total_seconds()
-                                                            )
-                                                            print(
-                                                                f"[DEBUG] Time comparison: strava={strava_str}, garmin={garmin_str}, diff={diff_seconds}s"
-                                                            )
-
-                                                            # Match if within 5 minutes (300 seconds)
-                                                            if diff_seconds <= 300:
-                                                                activity_id = act_id
-                                                                print(
-                                                                    f"[DEBUG] Found match! Activity ID: {activity_id}, time diff: {diff_seconds}s"
-                                                                )
-                                                                break
-                                                        except Exception as time_e:
-                                                            print(
-                                                                f"[DEBUG] Time parse error: {time_e}"
-                                                            )
-
-                                                if activity_id:
-                                                    break
-
-                                            except Exception as get_e:
-                                                print(f"[DEBUG] Error: {get_e}")
-
-                                    except Exception as get_e:
-                                        print(f"[DEBUG] Failed: {get_e}")
-                                        import traceback
-
-                                        traceback.print_exc()
-
-                            if activity_id:
-                                print(
-                                    f"Setting activity type to {garmin_sport} for activity {activity_id}"
-                                )
-                                # Get activity types to find type_id and parent_type_id
-                                activity_types = self._client.get_activity_types()
-                                print(
-                                    f"[DEBUG] Total activity types: {len(activity_types)}"
-                                )
-
-                                # Debug: print all available typeKeys
-                                all_type_keys = [
-                                    t.get("typeKey") for t in activity_types
-                                ]
-                                print(
-                                    f"[DEBUG] Available typeKeys: {sorted(all_type_keys)}"
-                                )
-
-                                # Find exact match first
-                                sport_type_info = next(
-                                    (
-                                        t
-                                        for t in activity_types
-                                        if t.get("typeKey") == garmin_sport
-                                    ),
-                                    None,
-                                )
-                                print(
-                                    f"[DEBUG] Looking for typeKey='{garmin_sport}', found: {sport_type_info}"
-                                )
-
-                                # If not found, try case-insensitive match
-                                if not sport_type_info:
-                                    for t in activity_types:
-                                        if (
-                                            t.get("typeKey", "").lower()
-                                            == garmin_sport.lower()
-                                        ):
-                                            sport_type_info = t
-                                            print(
-                                                f"[DEBUG] Found match (case-insensitive): {sport_type_info}"
-                                            )
-                                            break
-
-                                if sport_type_info:
-                                    print(
-                                        f"[DEBUG] Found type info: typeId={sport_type_info.get('typeId')}, parentTypeId={sport_type_info.get('parentTypeId')}"
-                                    )
-                                    try:
-                                        result = self._client.set_activity_type(
-                                            activity_id=str(activity_id),
-                                            type_id=sport_type_info.get("typeId"),
-                                            type_key=garmin_sport,
-                                            parent_type_id=sport_type_info.get(
-                                                "parentTypeId"
-                                            ),
-                                        )
-                                        print(
-                                            f"[DEBUG] set_activity_type result: {result}"
-                                        )
-                                        print(f"Activity type set to {garmin_sport}")
-                                    except Exception as api_e:
-                                        print(f"[DEBUG] API call failed: {api_e}")
-                                else:
-                                    print(
-                                        f"[ERROR] Could not find type info for '{garmin_sport}' in Garmin activity types"
-                                    )
-
-                                # Set activity name from Strava if provided
-                                if activity_name:
-                                    try:
-                                        name_result = self._client.set_activity_name(
-                                            activity_id=str(activity_id),
-                                            title=activity_name,
-                                        )
-                                        print(
-                                            f"[DEBUG] set_activity_name result: {name_result}"
-                                        )
-                                        print(f"Activity name set to: {activity_name}")
-                                    except Exception as name_e:
-                                        print(
-                                            f"[DEBUG] set_activity_name failed: {name_e}"
-                                        )
-                        except Exception as type_e:
-                            print(f"Failed to set activity type: {type_e}")
-                            import traceback
-
-                            traceback.print_exc()
-                except Exception as e:
-                    print("garmin upload failed: ", e)
-                    continue
-                finally:
-                    try:
-                        if os.path.exists(tmp_path):
-                            os.remove(tmp_path)
-                    except Exception:
-                        pass
-            else:
-                # CN: use httpx
-                files = {"file": (data.filename, file_body)}
-                try:
-                    res = await self.req.post(
-                        self.upload_url, files=files, headers=self.headers
-                    )
-                except Exception as e:
-                    print("garmin upload failed: ", e)
-                    continue
-                try:
-                    resp = res.json()["detailedImportResult"]
-                    print("garmin upload success: ", resp)
-                except Exception as e:
-                    print("garmin upload failed: ", e)
-                    continue
-                finally:
-                    try:
-                        if os.path.exists(data.filename):
-                            os.remove(data.filename)
-                    except Exception:
-                        pass
-
-                # CN: Set activity type and name after upload (same logic as COM, but via httpx)
+                # Determine the final Garmin sport type
                 garmin_sport = None
+
+                # If strava_sport_type is in mapping, use it
                 if strava_sport_type and strava_sport_type in STRAVA_TO_GARMIN_SPORT:
                     garmin_sport = STRAVA_TO_GARMIN_SPORT[strava_sport_type]
+                    print(
+                        f"[DEBUG] Sport type {strava_sport_type} mapped to garmin_sport={garmin_sport}"
+                    )
+
+                # If strava_sport_type maps to "other" or not in mapping, try to infer from filename
                 if not garmin_sport or garmin_sport == "other":
+                    # Try to infer sport type from filename (e.g., vr_tennis.tcx -> tennis)
                     filename_lower = data.filename.lower()
+                    print(
+                        f"[DEBUG] Trying to infer sport from filename: {data.filename}"
+                    )
+
+                    # Common filename patterns for VR activities
                     filename_to_sport = {
                         "vr_tennis": "tennis_v2",
                         "vr_riding": "virtual_ride",
@@ -766,230 +361,296 @@ class Garmin:
                         "ping_pong": "table_tennis",
                         "workout": "other",
                     }
+
                     for pattern, sport in filename_to_sport.items():
                         if pattern in filename_lower:
                             garmin_sport = sport
+                            print(
+                                f"[DEBUG] Inferred sport from filename: {pattern} -> {sport}"
+                            )
                             break
 
-                if not garmin_sport or garmin_sport == "other":
-                    print(
-                        f"[CN] No valid garmin sport type for '{strava_sport_type}', skipping type/name setting"
-                    )
-                    continue
-
-                # Get activity ID from upload response or by matching start time
-                activity_id = None
-                upload_id = resp.get("uploadId")
-                upload_time = resp.get("creationDate")
-                print(f"[CN] uploadId: {upload_id}, creationDate: {upload_time}")
-
-                if resp.get("successes") and len(resp.get("successes", [])) > 0:
-                    activity_id = resp["successes"][0].get("internalId") or resp[
-                        "successes"
-                    ][0].get("activityId")
-
-                if not activity_id and activity_start_time:
+                if garmin_sport and garmin_sport != "other":
+                    # Get activity ID from response
                     try:
-                        from datetime import datetime
-
-                        activity_date = (
-                            activity_start_time.split("T")[0]
-                            if "T" in str(activity_start_time)
-                            else str(activity_start_time)[:10]
+                        resp_data = result.json() if hasattr(result, "json") else result
+                        detailed = (
+                            resp_data.get("detailedImportResult", {})
+                            if isinstance(resp_data, dict)
+                            else {}
                         )
-                        for retry in range(4):
-                            if retry > 0:
-                                wait_time = 10 * retry
-                                print(f"[CN] Retry {retry}, waiting {wait_time}s...")
-                                await asyncio.sleep(wait_time)
-                            try:
-                                recent_res = await self.req.get(
-                                    f"{self.modern_url}/activitylist-service/activities/search/activities?start=0&limit=50",
-                                    headers=self.headers,
-                                )
-                                recent = recent_res.json()
-                                if isinstance(recent, dict):
-                                    recent = recent.get("activities", recent)
-                                print(f"[CN] Got {len(recent)} recent activities")
-                                for act in recent:
-                                    act_id = act.get("activityId")
-                                    act_start = act.get("startTimeGMT") or act.get(
-                                        "startTime"
+                        successes = (
+                            detailed.get("successes", [])
+                            if isinstance(detailed, dict)
+                            else []
+                        )
+                        upload_id = detailed.get("uploadId")
+                        upload_time = detailed.get("creationDate")
+                        upload_file_size = detailed.get("fileSize")
+                        print(
+                            f"[DEBUG] upload uploadId: {upload_id}, creationDate: {upload_time}, fileSize: {upload_file_size}"
+                        )
+
+                        activity_id = None
+                        if successes:
+                            activity_id = successes[0].get("internalId") or successes[
+                                0
+                            ].get("activityId")
+                        else:
+                            # Try to find activity by activity start time from Strava
+                            print("[DEBUG] Finding activity by start time...")
+                            if activity_start_time:
+                                try:
+                                    activity_id = None
+                                    # Extract date from activity_start_time
+                                    activity_date = (
+                                        activity_start_time.split("T")[0]
+                                        if "T" in str(activity_start_time)
+                                        else str(activity_start_time)[:10]
                                     )
-                                    if act_start and activity_start_time:
+                                    print(
+                                        f"[DEBUG] Looking for activity with start time: {activity_start_time}, date: {activity_date}"
+                                    )
+
+                                    # Retry with delays to wait for processing
+                                    for retry in range(4):
+                                        if retry > 0:
+                                            wait_time = 10 * retry
+                                            print(
+                                                f"[DEBUG] Retry {retry}, waiting {wait_time}s..."
+                                            )
+                                            await asyncio.sleep(wait_time)
+
                                         try:
-                                            strava_str = (
-                                                str(activity_start_time)
-                                                .replace("T", " ", 1)
-                                                .split("+")[0]
-                                                .split("Z")[0]
-                                                .strip()
-                                            )
-                                            garmin_str = (
-                                                str(act_start)
-                                                .replace("T", " ", 1)
-                                                .split("+")[0]
-                                                .split("Z")[0]
-                                                .strip()
-                                            )
-                                            if "." not in garmin_str:
-                                                garmin_dt = datetime.strptime(
-                                                    garmin_str, "%Y-%m-%d %H:%M:%S"
-                                                )
-                                            else:
-                                                garmin_dt = datetime.fromisoformat(
-                                                    garmin_str.replace(" ", "T")
-                                                )
-                                            strava_dt = datetime.fromisoformat(
-                                                strava_str
-                                            )
-                                            diff = abs(
-                                                (strava_dt - garmin_dt).total_seconds()
+                                            # Get activities for the activity date
+                                            recent = await asyncio.to_thread(
+                                                self._client.get_activities_by_date,
+                                                activity_date,
+                                                sortorder="desc",
                                             )
                                             print(
-                                                f"[CN] Checking act {act_id}: start={garmin_str}, diff={diff}s"
+                                                f"[DEBUG] Got {len(recent)} activities for {activity_date}"
                                             )
-                                            if diff <= 300:
-                                                activity_id = act_id
+
+                                            for act in recent:
+                                                act_id = act.get("activityId")
+                                                act_start = act.get(
+                                                    "startTimeGMT"
+                                                ) or act.get("startTime")
+                                                act_title = act.get(
+                                                    "activityName"
+                                                ) or act.get("title")
                                                 print(
-                                                    f"[CN] Found match! Activity ID: {activity_id}, diff={diff}s"
+                                                    f"[DEBUG] Checking: {act_id}, startTime: {act_start}, title: {act_title}"
                                                 )
+
+                                                # Match by activity start time from Strava (with 5 min tolerance)
+                                                if act_start and activity_start_time:
+                                                    try:
+                                                        from datetime import (
+                                                            datetime,
+                                                        )
+
+                                                        # Parse times
+                                                        # Strava: "2026-04-22T14:33:44+00:00" or "2026-04-22 11:19:38+00:00"
+                                                        # Garmin: "2026-04-22 14:33:44" or "2026-04-22T14:33:44Z"
+                                                        strava_str = (
+                                                            str(activity_start_time)
+                                                            .replace("T", " ", 1)
+                                                            .split("+")[0]
+                                                            .split("Z")[0]
+                                                            .strip()
+                                                        )
+                                                        garmin_str = (
+                                                            str(act_start)
+                                                            .replace("T", " ", 1)
+                                                            .split("+")[0]
+                                                            .split("Z")[0]
+                                                            .strip()
+                                                        )
+
+                                                        # Parse datetime (handle both with and without microseconds)
+                                                        strava_dt = (
+                                                            datetime.fromisoformat(
+                                                                strava_str
+                                                            )
+                                                        )
+                                                        if "." not in garmin_str:
+                                                            garmin_dt = (
+                                                                datetime.strptime(
+                                                                    garmin_str,
+                                                                    "%Y-%m-%d %H:%M:%S",
+                                                                )
+                                                            )
+                                                        else:
+                                                            garmin_dt = (
+                                                                datetime.fromisoformat(
+                                                                    garmin_str.replace(
+                                                                        " ", "T"
+                                                                    )
+                                                                )
+                                                            )
+
+                                                        # Calculate difference in seconds
+                                                        diff_seconds = abs(
+                                                            (
+                                                                strava_dt - garmin_dt
+                                                            ).total_seconds()
+                                                        )
+                                                        print(
+                                                            f"[DEBUG] Time comparison: strava={strava_str}, garmin={garmin_str}, diff={diff_seconds}s"
+                                                        )
+
+                                                        # Match if within 5 minutes (300 seconds)
+                                                        if diff_seconds <= 300:
+                                                            activity_id = act_id
+                                                            print(
+                                                                f"[DEBUG] Found match! Activity ID: {activity_id}, time diff: {diff_seconds}s"
+                                                            )
+                                                            break
+                                                    except Exception as time_e:
+                                                        print(
+                                                            f"[DEBUG] Time parse error: {time_e}"
+                                                        )
+
+                                            if activity_id:
                                                 break
-                                        except Exception as te:
-                                            print(f"[CN] Time parse error: {te}")
-                                if activity_id:
-                                    break
-                            except Exception as ge:
-                                print(f"[CN] Error fetching activities: {ge}")
-                    except Exception as match_e:
-                        print(f"[CN] Failed to match activity by start time: {match_e}")
 
-                if not activity_id:
-                    print("[CN] Could not find activity ID, skipping type/name setting")
-                    continue
+                                        except Exception as get_e:
+                                            print(f"[DEBUG] Error: {get_e}")
 
-                print(f"[CN] Setting activity type to {garmin_sport} for {activity_id}")
+                                except Exception as get_e:
+                                    print(f"[DEBUG] Failed: {get_e}")
+                                    import traceback
 
-                # Get activity types from CN API
+                                    traceback.print_exc()
+
+                        if activity_id:
+                            print(
+                                f"Setting activity type to {garmin_sport} for activity {activity_id}"
+                            )
+                            # Get activity types to find type_id and parent_type_id
+                            activity_types = await asyncio.to_thread(
+                                self._client.get_activity_types
+                            )
+                            print(
+                                f"[DEBUG] Total activity types: {len(activity_types)}"
+                            )
+
+                            # Debug: print all available typeKeys
+                            all_type_keys = [t.get("typeKey") for t in activity_types]
+                            print(
+                                f"[DEBUG] Available typeKeys: {sorted(all_type_keys)}"
+                            )
+
+                            # Find exact match first
+                            sport_type_info = next(
+                                (
+                                    t
+                                    for t in activity_types
+                                    if t.get("typeKey") == garmin_sport
+                                ),
+                                None,
+                            )
+                            print(
+                                f"[DEBUG] Looking for typeKey='{garmin_sport}', found: {sport_type_info}"
+                            )
+
+                            # If not found, try case-insensitive match
+                            if not sport_type_info:
+                                for t in activity_types:
+                                    if (
+                                        t.get("typeKey", "").lower()
+                                        == garmin_sport.lower()
+                                    ):
+                                        sport_type_info = t
+                                        print(
+                                            f"[DEBUG] Found match (case-insensitive): {sport_type_info}"
+                                        )
+                                        break
+
+                            if sport_type_info:
+                                print(
+                                    f"[DEBUG] Found type info: typeId={sport_type_info.get('typeId')}, parentTypeId={sport_type_info.get('parentTypeId')}"
+                                )
+                                try:
+                                    result = await asyncio.to_thread(
+                                        self._client.set_activity_type,
+                                        activity_id=int(activity_id),
+                                        type_id=sport_type_info.get("typeId"),
+                                        type_key=garmin_sport,
+                                        parent_type_id=sport_type_info.get(
+                                            "parentTypeId"
+                                        ),
+                                    )
+                                    print(f"[DEBUG] set_activity_type result: {result}")
+                                    print(f"Activity type set to {garmin_sport}")
+                                except Exception as api_e:
+                                    print(f"[DEBUG] API call failed: {api_e}")
+                            else:
+                                print(
+                                    f"[ERROR] Could not find type info for '{garmin_sport}' in Garmin activity types"
+                                )
+
+                            # Set activity name from Strava if provided
+                            if activity_name:
+                                try:
+                                    name_result = await asyncio.to_thread(
+                                        self._client.set_activity_name,
+                                        activity_id=int(activity_id),
+                                        title=activity_name,
+                                    )
+                                    print(
+                                        f"[DEBUG] set_activity_name result: {name_result}"
+                                    )
+                                    print(f"Activity name set to: {activity_name}")
+                                except Exception as name_e:
+                                    print(f"[DEBUG] set_activity_name failed: {name_e}")
+                    except Exception as type_e:
+                        print(f"Failed to set activity type: {type_e}")
+                        import traceback
+
+                        traceback.print_exc()
+            except Exception as e:
+                print("garmin upload failed: ", e)
+                continue
+            finally:
                 try:
-                    types_res = await self.req.get(
-                        f"{self.modern_url}/activity-service/activityTypes",
-                        headers=self.headers,
-                    )
-                    activity_types = types_res.json()
-                    if isinstance(activity_types, dict):
-                        activity_types = activity_types.get(
-                            "activityTypes", activity_types
-                        )
-                    print(f"[CN] Total activity types: {len(activity_types)}")
-                except Exception as type_fetch_e:
-                    print(f"[CN] Failed to fetch activity types: {type_fetch_e}")
-                    activity_types = []
+                    if os.path.exists(tmp_path):
+                        os.remove(tmp_path)
+                except Exception:
+                    pass
 
-                sport_type_info = None
-                for t in activity_types:
-                    if t.get("typeKey") == garmin_sport:
-                        sport_type_info = t
-                        break
-                if not sport_type_info:
-                    for t in activity_types:
-                        if t.get("typeKey", "").lower() == garmin_sport.lower():
-                            sport_type_info = t
-                            break
+    async def upload_activity_from_file(self, file):
+        print("Uploading " + str(file))
+        with open(file, "rb") as f:
+            file_body = f.read()
 
-                if sport_type_info:
-                    try:
-                        patch_res = await self.req.patch(
-                            f"{self.modern_url}/activity-service/activity/{activity_id}",
-                            headers={
-                                **self.headers,
-                                "Content-Type": "application/json",
-                            },
-                            json={
-                                "activityType": {
-                                    "typeId": sport_type_info.get("typeId"),
-                                    "typeKey": garmin_sport,
-                                    "parentTypeId": sport_type_info.get("parentTypeId"),
-                                }
-                            },
-                        )
-                        print(
-                            f"[CN] set_activity_type result: {patch_res.status_code}, {patch_res.text[:200] if patch_res.text else 'ok'}"
-                        )
-                        print(f"Activity type set to {garmin_sport}")
-                    except Exception as patch_e:
-                        print(f"[CN] set_activity_type failed: {patch_e}")
-                else:
-                    print(
-                        f"[CN] Could not find type info for '{garmin_sport}' in CN activity types"
-                    )
+        # Use garminconnect (works for both COM and CN regions)
+        import tempfile
 
-                # Set activity name
-                if activity_name:
-                    try:
-                        name_patch = await self.req.patch(
-                            f"{self.modern_url}/activity-service/activity/{activity_id}",
-                            headers={
-                                **self.headers,
-                                "Content-Type": "application/json",
-                            },
-                            json={"activityName": activity_name},
-                        )
-                        print(
-                            f"[CN] set_activity_name result: {name_patch.status_code}, {name_patch.text[:200] if name_patch.text else 'ok'}"
-                        )
-                        print(f"Activity name set to: {activity_name}")
-                    except Exception as name_e:
-                        print(f"[CN] set_activity_name failed: {name_e}")
-        if not self._use_garminconnect:
-            await self.req.aclose()
+        ext = os.path.splitext(file)[-1].lower().lstrip(".")
+        with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
+            tmp.write(file_body)
+            tmp_path = tmp.name
+        try:
+            result = await asyncio.to_thread(self._client.upload_activity, tmp_path)
+            print("garmin upload success: ", result)
+        except Exception as e:
+            print("garmin upload failed: ", e)
+        finally:
+            try:
+                os.remove(tmp_path)
+            except Exception:
+                pass
 
-        async def upload_activity_from_file(self, file):
-            print("Uploading " + str(file))
-            with open(file, "rb") as f:
-                file_body = f.read()
+    async def upload_activities_files(self, files):
+        print("start upload activities to garmin!")
 
-            if self._use_garminconnect:
-                # COM: use garminconnect (requires file path, not raw data)
-                import tempfile
-
-                ext = os.path.splitext(file)[-1].lower().lstrip(".")
-                with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as tmp:
-                    tmp.write(file_body)
-                    tmp_path = tmp.name
-                try:
-                    result = self._client.upload_activity(tmp_path)
-                    print("garmin upload success: ", result)
-                except Exception as e:
-                    print("garmin upload failed: ", e)
-                finally:
-                    os.remove(tmp_path)
-            else:
-                # CN: use httpx
-                files = {"file": (file, file_body)}
-                try:
-                    res = await self.req.post(
-                        self.upload_url, files=files, headers=self.headers
-                    )
-                except Exception as e:
-                    print(str(e))
-                    return
-                try:
-                    resp = res.json()["detailedImportResult"]
-                    print("garmin upload success: ", resp)
-                except Exception as e:
-                    print("garmin upload failed: ", e)
-
-        async def upload_activities_files(self, files):
-            print("start upload activities to garmin!")
-
-            await gather_with_concurrency(
-                10,
-                [self.upload_activity_from_file(file=f) for f in files],
-            )
-
-            if not self._use_garminconnect:
-                await self.req.aclose()
+        await gather_with_concurrency(
+            10,
+            [self.upload_activity_from_file(file=f) for f in files],
+        )
 
 
 class GarminConnectHttpError(Exception):
@@ -1106,7 +767,7 @@ def get_downloaded_ids(folder):
 def get_garmin_summary_infos(activity_summary, activity_id):
     garmin_summary_infos = {}
     try:
-        # garminconnect returns data at root level, garth wraps in summaryDTO
+        # garminconnect returns data at root level
         summary_dto = activity_summary.get("summaryDTO") or activity_summary
         garmin_summary_infos["distance"] = summary_dto.get("distance")
         garmin_summary_infos["average_hr"] = summary_dto.get("averageHR")
@@ -1129,149 +790,80 @@ def restore_or_login(username, password, auth_domain):
     """
     Login to Garmin and return the appropriate client.
 
-    For COM: returns a GarminConnectClient (garminconnect library)
-    For CN: returns a secret_string (garth library, unchanged)
+    For both COM and CN: returns a GarminConnectLib instance.
+    CN region is handled via is_cn=True parameter.
 
     Handles 429 errors by trying to use existing token.
     """
-    import pickle
-    import time
+    is_cn = auth_domain == "CN"
+    domain = "garmin.cn" if is_cn else "garmin.com"
+    tokenstore = os.path.expanduser(f"~/.garminconnect/{domain}")
+    os.makedirs(tokenstore, exist_ok=True)
 
-    domain = "garmin.cn" if auth_domain == "CN" else "garmin.com"
-    token_file = f".token_{domain.replace('.', '_')}.pkl"
+    # Try to restore saved tokens first
+    try:
+        client = GarminConnectLib(username, password, is_cn=is_cn)
+        client.login(tokenstore)
+        print(f"Logged in using saved tokens for {auth_domain}")
+        return client
+    except GarminConnectTooManyRequestsError as e:
+        print(f"Rate limit (429) during login for {auth_domain}: {e}")
+        raise e
+    except (
+        GarminConnectAuthenticationError,
+        GarminConnectConnectionError,
+    ):
+        print("No valid tokens found — logging in with credentials.")
 
-    # Use garminconnect for COM, garth for CN
-    if auth_domain == "CN":
-        # CN: use garth (unchanged)
-        garth.configure(domain=domain, ssl_verify=False)
+    # Login with credentials
+    print(f"Logging in to {auth_domain} with credentials...")
+    max_retries = 5
+    base_wait_time = 30  # seconds
 
-        # Try to load existing token first
-        if os.path.exists(token_file):
-            try:
-                with open(token_file, "rb") as f:
-                    token_data = f.read()
-                if token_data:
-                    garth.client.loads(token_data)
-                    if not garth.client.oauth2_token.expired:
-                        print(f"Loaded existing token for {auth_domain}")
-                        return token_data
-            except Exception:
-                pass
-
-        # Login with credentials
-        print(f"Logging in to {auth_domain} with credentials...")
-        max_retries = 5
-        base_wait_time = 30  # seconds
-
-        for attempt in range(max_retries):
-            try:
-                garth.client.login(username, password)
-                secret_string = garth.client.dumps()
-                with open(token_file, "wb") as f:
-                    pickle.dump(secret_string, f)
-                print(f"Saved token to {token_file}")
-                return secret_string
-            except Exception as e:
-                error_msg = str(e)
-                if "429" in error_msg or "Too many requests" in error_msg:
-                    if os.path.exists(token_file):
-                        try:
-                            with open(token_file, "rb") as f:
-                                token_data = f.read()
-                            if token_data:
-                                garth.client.loads(token_data)
-                                if not garth.client.oauth2_token.expired:
-                                    print(
-                                        f"Using saved token after 429 for {auth_domain}"
-                                    )
-                                    return token_data
-                        except Exception:
-                            pass
-
-                    if attempt < max_retries - 1:
-                        wait_time = base_wait_time * (2**attempt)
-                        print(
-                            f"Rate limit (429) during login for {auth_domain}, "
-                            f"attempt {attempt + 1}/{max_retries}. "
-                            f"Waiting {wait_time}s before retry..."
-                        )
-                        time.sleep(wait_time)
-                    else:
-                        print(
-                            f"Rate limit (429) persisted after {max_retries} attempts for {auth_domain}"
-                        )
-                        raise e
-                else:
-                    raise e
-    else:
-        # COM: use garminconnect
-        tokenstore = os.path.expanduser(f"~/.garminconnect/{domain}")
-        os.makedirs(tokenstore, exist_ok=True)
-
-        # Try to restore saved tokens
+    for attempt in range(max_retries):
         try:
-            client = GarminConnectLib(username, password)
+            client = GarminConnectLib(username, password, is_cn=is_cn)
             client.login(tokenstore)
-            print(f"Logged in using saved tokens for {auth_domain}")
+            print(f"Login successful for {auth_domain}")
             return client
         except GarminConnectTooManyRequestsError as e:
-            print(f"Rate limit (429) during login for {auth_domain}: {e}")
-            raise e
-        except (
-            GarminConnectAuthenticationError,
-            GarminConnectConnectionError,
-        ):
-            print("No valid tokens found — logging in with credentials.")
-
-        # Login with credentials
-        print(f"Logging in to {auth_domain} with credentials...")
-        max_retries = 5
-        base_wait_time = 30  # seconds
-
-        for attempt in range(max_retries):
-            try:
-                client = GarminConnectLib(username, password)
-                client.login(tokenstore)
-                print(f"Login successful for {auth_domain}")
-                return client
-            except GarminConnectTooManyRequestsError as e:
-                if attempt < max_retries - 1:
-                    wait_time = base_wait_time * (2**attempt)
-                    print(
-                        f"Rate limit (429) during login for {auth_domain}, "
-                        f"attempt {attempt + 1}/{max_retries}. "
-                        f"Waiting {wait_time}s before retry..."
-                    )
-                    time.sleep(wait_time)
-                else:
-                    print(
-                        f"Rate limit (429) persisted after {max_retries} attempts for {auth_domain}"
-                    )
-                    raise e
-            except GarminConnectAuthenticationError:
-                print("Wrong credentials — please check your email and password.")
-                raise
-            except GarminConnectConnectionError as e:
-                print(f"Connection error: {e}")
-                if attempt < max_retries - 1:
-                    wait_time = base_wait_time * (2**attempt)
-                    print(
-                        f"Connection error for {auth_domain}, "
-                        f"attempt {attempt + 1}/{max_retries}. "
-                        f"Waiting {wait_time}s before retry..."
-                    )
-                    time.sleep(wait_time)
-                else:
-                    raise e
+            if attempt < max_retries - 1:
+                wait_time = base_wait_time * (2**attempt)
+                print(
+                    f"Rate limit (429) during login for {auth_domain}, "
+                    f"attempt {attempt + 1}/{max_retries}. "
+                    f"Waiting {wait_time}s before retry..."
+                )
+                time.sleep(wait_time)
+            else:
+                print(
+                    f"Rate limit (429) persisted after {max_retries} attempts for {auth_domain}"
+                )
+                raise e
+        except GarminConnectAuthenticationError:
+            print("Wrong credentials — please check your email and password.")
+            raise
+        except GarminConnectConnectionError as e:
+            print(f"Connection error: {e}")
+            if attempt < max_retries - 1:
+                wait_time = base_wait_time * (2**attempt)
+                print(
+                    f"Connection error for {auth_domain}, "
+                    f"attempt {attempt + 1}/{max_retries}. "
+                    f"Waiting {wait_time}s before retry..."
+                )
+                time.sleep(wait_time)
+            else:
+                raise e
 
 
 async def download_new_activities(
-    secret_string, auth_domain, downloaded_ids, is_only_running, folder, file_type
+    client, auth_domain, downloaded_ids, is_only_running, folder, file_type
 ):
-    client = Garmin(secret_string, auth_domain, is_only_running)
+    garmin_client = Garmin(client, auth_domain, is_only_running)
     # because I don't find a para for after time, so I use garmin-id as filename
     # to find new run to generate
-    activity_ids = await get_activity_id_list(client)
+    activity_ids = await get_activity_id_list(garmin_client)
     to_generate_garmin_ids = list(set(activity_ids) - set(downloaded_ids))
     print(f"{len(to_generate_garmin_ids)} new activities to be downloaded")
 
@@ -1279,7 +871,7 @@ async def download_new_activities(
     garmin_summary_infos_dict = {}
     for id in to_generate_garmin_ids:
         try:
-            activity_summary = await client.get_activity_summary(id)
+            activity_summary = await garmin_client.get_activity_summary(id)
             activity_title = activity_summary.get("activityName", "")
             to_generate_garmin_id2title[id] = activity_title
             garmin_summary_infos_dict[id] = get_garmin_summary_infos(
@@ -1294,23 +886,23 @@ async def download_new_activities(
         10,
         [
             download_garmin_data(
-                client, id, file_type=file_type, summary_infos=garmin_summary_infos_dict
+                garmin_client,
+                id,
+                file_type=file_type,
+                summary_infos=garmin_summary_infos_dict,
             )
             for id in to_generate_garmin_ids
         ],
     )
     print(f"Download finished. Elapsed {time.time()-start_time} seconds")
 
-    # Only close req for CN region (uses httpx), COM uses garminconnect
-    if hasattr(client, "req"):
-        await client.req.aclose()
     return to_generate_garmin_ids, to_generate_garmin_id2title
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "secret_string", nargs="?", help="secret_string fro get_garmin_secret.py"
+        "secret_string", nargs="?", help="secret_string from get_garmin_secret.py"
     )
     parser.add_argument(
         "--is-cn",
@@ -1358,16 +950,22 @@ if __name__ == "__main__":
         print(f"Using credentials from environment variables for {auth_domain}...")
         garmin_client = restore_or_login(email_env, password_env, auth_domain)
     elif secret_string:
-        garmin_client = restore_or_login(secret_string, None, auth_domain)
+        # secret_string is not used for garminconnect library
+        # Need username and password, so fall back to env variables
+        print(
+            "secret_string not supported for garminconnect. Please use environment variables."
+        )
+        print(
+            f"  Set GARMIN_{auth_domain}_USERNAME and GARMIN_{auth_domain}_PASSWORD environment variables"
+        )
+        sys.exit(1)
     else:
         print(
-            f"Missing argument: please provide secret_string OR set "
-            f"GARMIN_{auth_domain}_USERNAME/GARMIN_{auth_domain}_PASSWORD environment variables"
+            f"Missing credentials: please set "
+            f"GARMIN_{auth_domain}_USERNAME and GARMIN_{auth_domain}_PASSWORD environment variables"
         )
-        print("Usage: python garmin_sync.py <secret_string> [--is-cn] [--only-run]")
         print(
-            f"  Or set environment variables: GARMIN_{auth_domain}_USERNAME and "
-            f"GARMIN_{auth_domain}_PASSWORD"
+            f"Usage: python garmin_sync.py <username> <password> [--is-cn] [--only-run]"
         )
         sys.exit(1)
 
