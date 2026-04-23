@@ -57,10 +57,10 @@ if __name__ == "__main__":
     # Step 1:
     # Download activities from Garmin COM to local folder
 
-    # load synced activity list
-    downloaded_fit = get_downloaded_ids(FIT_FOLDER)
-    downloaded_gpx = get_downloaded_ids(GPX_FOLDER)
-    downloaded_activity = list(set(downloaded_fit + downloaded_gpx))
+    # Note: We don't filter by downloaded_activity here because the purpose is to
+    # upload recent activities to Garmin CN. Duplicate uploads will be handled gracefully.
+    # Pass empty list to download_new_activities to get all activities, then limit to max_activities.
+    downloaded_activity = []
 
     folder = FIT_FOLDER
     # make gpx or tcx dir
