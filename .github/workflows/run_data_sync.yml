@@ -173,12 +173,12 @@ jobs:
         # if: env.RUN_TYPE == 'strava_to_garmin'
         run: |
           python run_page/strava_to_garmin_sync.py ${{ secrets.STRAVA_CLIENT_ID }} ${{ secrets.STRAVA_CLIENT_SECRET }} ${{ secrets.STRAVA_CLIENT_REFRESH_TOKEN }} "" "" ${{ secrets.STRAVA_JWT }}
-        # Note: syncs to Garmin International (COM) only. For China, use garmin_sync_cn_global after this.
+        # Note: syncs to Garmin International (COM) only. For China, use garmin_sync_global_cn after this.
 
       - name: Run sync Garmin COM to Garmin CN script
-        # if: env.RUN_TYPE == 'garmin_sync_cn_global'
+        # if: env.RUN_TYPE == 'garmin_sync_global_cn'
         run: |
-          python run_page/garmin_sync_cn_global.py
+          python run_page/garmin_sync_global_cn.py
         # Syncs from Garmin International (COM) to Garmin China (CN)
         # Uses GARMIN_CN_USERNAME, GARMIN_CN_PASSWORD, GARMIN_COM_USERNAME, GARMIN_COM_PASSWORD environment variables
         # Or pass --cn-username/--cn-password/--com-username/--com-password arguments
