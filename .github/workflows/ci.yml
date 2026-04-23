@@ -44,8 +44,8 @@ jobs:
 
       - name: Lint with Ruff
         run: |
-          pip install ruff
-          ruff check .
+          pip install 'ruff==0.9.0'
+          ruff check . --target-version py312
 
   node_lint_and_test:
     runs-on: ubuntu-latest
