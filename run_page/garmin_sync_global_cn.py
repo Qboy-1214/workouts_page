@@ -34,7 +34,12 @@ async def get_cn_existing_ids(cn_client):
 
 
 async def download_with_cn_filter(
-    com_client, cn_existing_ids, is_only_running, folder, file_type, max_activities=10
+    com_client,
+    cn_existing_ids,
+    is_only_running,
+    folder,
+    file_type,
+    max_activities=10000,
 ):
     """Download activities from COM, filtering out those that exist in CN"""
     garmin_com = Garmin(com_client, "COM", is_only_running)
@@ -42,10 +47,15 @@ async def download_with_cn_filter(
 
     # Filter out activities that already exist in CN
     to_generate_ids = [id for id in activity_ids if id not in cn_existing_ids]
-    to_generate_ids = to_generate_ids[:max_activities]
-    print(
-        f"{len(to_generate_ids)} new activities to be downloaded (filtered from COM, limited to {max_activities})"
-    )
+
+    # Apply max_activities limit only if explicitly set (not 0)
+    if max_activities > 0 and len(to_generate_ids) > max_activities:
+        to_generate_ids = to_generate_ids[:max_activities]
+        print(
+            f"{len(to_generate_ids)} new activities to be downloaded (limited to {max_activities})"
+        )
+    else:
+        print(f"{len(to_generate_ids)} new activities to be downloaded (no limit)")
 
     to_generate_garmin_id2title = {}
     garmin_summary_infos_dict = {}
@@ -108,8 +118,8 @@ if __name__ == "__main__":
         "--max-activities",
         dest="max_activities",
         type=int,
-        default=10,
-        help="maximum number of activities to sync",
+        default=10000,
+        help="maximum number of activities to sync (default: 10000, set to 0 for unlimited)",
     )
 
     options = parser.parse_args()
