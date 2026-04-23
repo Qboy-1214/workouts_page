@@ -1155,7 +1155,7 @@ if __name__ == "__main__":
             f"GARMIN_{auth_domain}_USERNAME and GARMIN_{auth_domain}_PASSWORD environment variables"
         )
         print(
-            f"Usage: python garmin_sync.py <username> <password> [--is-cn] [--only-run]"
+            "Usage: python garmin_sync.py <username> <password> [--is-cn] [--only-run]"
         )
         sys.exit(1)
 

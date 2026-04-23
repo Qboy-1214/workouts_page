@@ -110,7 +110,7 @@ if __name__ == "__main__":
     # For CN sync, run garmin_sync_cn_global.py separately after COM sync completes.
     options = parser.parse_args()
 
-    print(f"[main] STRAVA_TO_GARMIN_SYNC START - syncing to COM (Garmin International)")
+    print("[main] STRAVA_TO_GARMIN_SYNC START - syncing to COM (Garmin International)")
     print(
         "  Note: For CN sync, run garmin_sync_cn_global.py separately after COM sync completes"
     )
