@@ -787,7 +787,10 @@ async def download_garmin_data(
                                     os.remove(extracted_path)
                                 except Exception:
                                     import glob
-                                    pattern = os.path.join(folder, f"*{activity_id}*.fit")
+
+                                    pattern = os.path.join(
+                                        folder, f"*{activity_id}*.fit"
+                                    )
                                     matches = glob.glob(pattern)
                                     if matches:
                                         try:
