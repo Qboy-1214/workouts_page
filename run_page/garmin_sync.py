@@ -847,15 +847,14 @@ async def download_garmin_data(
             for file_info in zip_file.infolist():
                 zip_file.extract(file_info, folder)
                 if file_info.filename.endswith(".fit"):
-                    os.rename(
-                        os.path.join(folder, f"{activity_id}_ACTIVITY.fit"),
-                        os.path.join(folder, f"{activity_id}.fit"),
-                    )
+                    extracted_path = os.path.join(folder, file_info.filename)
+                    target_path = os.path.join(folder, f"{activity_id}.fit")
+                    if extracted_path != target_path:
+                        os.rename(extracted_path, target_path)
                 elif file_info.filename.endswith(".gpx"):
-                    os.rename(
-                        os.path.join(folder, f"{activity_id}_ACTIVITY.gpx"),
-                        os.path.join(FOLDER_DICT["gpx"], f"{activity_id}.gpx"),
-                    )
+                    extracted_path = os.path.join(folder, file_info.filename)
+                    target_path = os.path.join(FOLDER_DICT["gpx"], f"{activity_id}.gpx")
+                    os.rename(extracted_path, target_path)
                 else:
                     os.remove(os.path.join(folder, file_info.filename))
             os.remove(file_path)
