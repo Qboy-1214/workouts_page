@@ -107,12 +107,12 @@ if __name__ == "__main__":
         help="whether to use a faked Garmin device",
     )
     # Note: is_cn removed - strava_to_garmin_sync now only syncs to COM (Garmin International).
-    # For CN sync, run garmin_sync_cn_global.py separately after COM sync completes.
+    # For CN sync, run garmin_sync_global_cn.py separately after COM sync completes.
     options = parser.parse_args()
 
     print("[main] STRAVA_TO_GARMIN_SYNC START - syncing to COM (Garmin International)")
     print(
-        "  Note: For CN sync, run garmin_sync_cn_global.py separately after COM sync completes"
+        "  Note: For CN sync, run garmin_sync_global_cn.py separately after COM sync completes"
     )
 
     strava_client = make_strava_client(

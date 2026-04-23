@@ -1,7 +1,6 @@
 """
 Python 3 API wrapper for Garmin Connect to get your statistics.
-International (COM): uses garminconnect library
-China (CN): uses garth library (garminconnect does not properly support CN)
+Uses garminconnect library for both International (COM) and China (CN) regions.
 """
 
 import argparse
@@ -18,24 +17,26 @@ import zipfile
 from lxml import etree
 
 import aiofiles
-import httpx
 from garminconnect import (
     Garmin as GarminConnectLib,
     GarminConnectAuthenticationError,
     GarminConnectConnectionError,
     GarminConnectTooManyRequestsError,
 )
+
+# Import garth for CN authentication fallback
+try:
+    from garmin_cn_garth import GarminCngarthClient, create_garth_cn_client
+    GARTH_CN_AVAILABLE = True
+except ImportError:
+    GARTH_CN_AVAILABLE = False
+    print("[restore_or_login] Warning: garth not available for CN fallback")
 from config import FOLDER_DICT, JSON_FILE, SQL_FILE
 from garmin_device_adaptor import process_garmin_data
 from utils import make_activities_file_only
 
-# garth is only used for China region
-import garth
-
 # logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
-
-TIME_OUT = httpx.Timeout(240.0, connect=360.0)
 
 GARMIN_COM_URL_DICT = {
     "SSO_URL_ORIGIN": "https://sso.garmin.com",
@@ -47,7 +48,7 @@ GARMIN_COM_URL_DICT = {
 }
 
 GARMIN_CN_URL_DICT = {
-    "SSO_URL_ORIGIN": "https://sso.garmin.com",
+    "SSO_URL_ORIGIN": "https://sso.garmin.cn",
     "SSO_URL": "https://sso.garmin.cn/sso",
     "MODERN_URL": "https://connectapi.garmin.cn",
     "SIGNIN_URL": "https://sso.garmin.cn/sso/signin",
@@ -217,9 +218,7 @@ def fix_tcx_sport_type(file_path, strava_sport_type=None):
 
 class Garmin:
     """
-    Garmin client for both COM (garminconnect) and CN (garth) regions.
-
-    COM uses garminconnect library, CN uses garth library.
+    Garmin client for both COM and CN regions using garminconnect library.
     """
 
     def __init__(self, client, auth_domain, is_only_running=False):
@@ -228,71 +227,18 @@ class Garmin:
         """
         self.auth_domain = auth_domain.upper() if auth_domain else "COM"
         self.is_only_running = is_only_running
-        self._client = client  # may be GarminConnectLib (COM) or secret_string (CN)
+        self._client = client  # GarminConnectLib or GarthClientWrapper instance
 
-        if client is None:
-            # Login failed or not attempted
-            if self.auth_domain == "CN":
-                self._use_garminconnect = False
-                self.URL_DICT = GARMIN_CN_URL_DICT
-                self.modern_url = self.URL_DICT.get("MODERN_URL", "")
-                self.upload_url = self.URL_DICT.get("UPLOAD_URL", "")
-                self.activity_url = self.URL_DICT.get("ACTIVITY_URL", "")
-            else:
-                # COM uses garminconnect
-                self._use_garminconnect = True
-                self.modern_url = GARMIN_COM_URL_DICT.get("MODERN_URL", "")
-                self.upload_url = GARMIN_COM_URL_DICT.get("UPLOAD_URL", "")
-            return
-
+        # Check if using garth client (CN with garth)
+        self._is_garth_client = hasattr(client, '_garth_client') or type(client).__name__ == 'GarminCngarthClient'
+        
+        # Select URL dict based on auth_domain
         if self.auth_domain == "CN":
-            # CN uses garth
-            self._use_garminconnect = False
-            self.req = httpx.AsyncClient(timeout=TIME_OUT)
-            self.URL_DICT = GARMIN_CN_URL_DICT
-
-            garth.configure(domain="garmin.cn", ssl_verify=False)
-            garth.client.loads(client)  # client is secret_string for garth
-            if garth.client.oauth2_token.expired:
-                garth.client.refresh_oauth2()
-            self.headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-                "origin": self.URL_DICT.get("SSO_URL_ORIGIN", ""),
-                "nk": "NT",
-                "Authorization": str(garth.client.oauth2_token),
-            }
-            self.upload_url = self.URL_DICT.get("UPLOAD_URL", "")
-            self.activity_url = self.URL_DICT.get("ACTIVITY_URL", "")
-            self.modern_url = self.URL_DICT.get("MODERN_URL", "")
+            url_dict = GARMIN_CN_URL_DICT
         else:
-            # COM uses garminconnect
-            self._use_garminconnect = True
-            self.modern_url = GARMIN_COM_URL_DICT.get("MODERN_URL", "")
-            self.upload_url = GARMIN_COM_URL_DICT.get("UPLOAD_URL", "")
-
-    async def fetch_data(self, url, retrying=False):
-        """
-        Fetch and return data (only for CN region using garth)
-        """
-        try:
-            response = await self.req.get(url, headers=self.headers)
-            if response.status_code == 429:
-                raise GarminConnectTooManyRequestsError("Too many requests")
-            logger.debug(f"fetch_data got response code {response.status_code}")
-            response.raise_for_status()
-            return response.json()
-        except Exception as err:
-            print(err)
-            if retrying:
-                logger.debug(
-                    "Exception occurred during data retrieval in retry: %s" % err
-                )
-                raise GarminConnectConnectionError("Error connecting: %s" % err)
-            else:
-                logger.debug(
-                    "Exception occurred during data retrieval, retrying: %s" % err
-                )
-                return await self.fetch_data(url, retrying=True)
+            url_dict = GARMIN_COM_URL_DICT
+        self.modern_url = url_dict.get("MODERN_URL", "")
+        self.upload_url = url_dict.get("UPLOAD_URL", "")
 
     async def get_activities(self, start, limit):
         """
@@ -301,8 +247,14 @@ class Garmin:
         if self._client is None:
             print("[Garmin.get_activities] No garmin client, returning empty list")
             return []
-        if self._use_garminconnect:
-            # COM: use garminconnect
+        
+        # Handle garth client differently
+        if self._is_garth_client:
+            activities = await asyncio.to_thread(
+                self._client.get_activities, start, limit
+            )
+        else:
+            # Use garminconnect library
             activities = await asyncio.to_thread(
                 self._client.get_activities, start, limit
             )
@@ -313,13 +265,7 @@ class Garmin:
                     for a in activities
                     if a.get("activityType", {}).get("typeKey") == "running"
                 ]
-            return activities
-        else:
-            # CN: use garth via httpx
-            url = f"{self.modern_url}/activitylist-service/activities/search/activities?limit={limit}"
-            if self.is_only_running:
-                url = url + "&activityType=running"
-            return await self.fetch_data(url)
+        return activities
 
     async def get_activity_summary(self, activity_id):
         """
@@ -328,14 +274,13 @@ class Garmin:
         if self._client is None:
             print("[Garmin.get_activity_summary] No garmin client, returning empty")
             return {}
-        if self._use_garminconnect:
-            # COM: use garminconnect
-            # activity_id must be int for garminconnect
-            return await asyncio.to_thread(self._client.get_activity, int(activity_id))
+        
+        # Handle garth client differently
+        if self._is_garth_client:
+            return await asyncio.to_thread(self._client.get_activity_summary, activity_id)
         else:
-            # CN: use garth via httpx
-            url = f"{self.modern_url}/activity-service/activity/{activity_id}"
-            return await self.fetch_data(url)
+            # Use garminconnect library (activity_id must be int)
+            return await asyncio.to_thread(self._client.get_activity, int(activity_id))
 
     async def download_activity(self, activity_id, file_type="gpx"):
         """
@@ -344,9 +289,14 @@ class Garmin:
         if self._client is None:
             print("[Garmin.download_activity] No garmin client, returning empty")
             return b""
-        if self._use_garminconnect:
-            # COM: use garminconnect
-            # activity_id must be int for garminconnect
+        
+        # Handle garth client differently
+        if self._is_garth_client:
+            return await asyncio.to_thread(
+                self._client.download_activity, int(activity_id), file_type
+            )
+        else:
+            # Use garminconnect library
             # Convert file_type string to garminconnect enum
             fmt_map = {
                 "gpx": GarminConnectLib.ActivityDownloadFormat.GPX,
@@ -357,17 +307,6 @@ class Garmin:
             return await asyncio.to_thread(
                 self._client.download_activity, int(activity_id), dl_fmt=dl_fmt
             )
-        else:
-            # CN: use garth via httpx
-            url = (
-                f"{self.modern_url}/download-service/export/gpx/activity/{activity_id}"
-            )
-            if file_type == "fit":
-                url = f"{self.modern_url}/download-service/files/activity/{activity_id}"
-            logger.info(f"Download activity from {url}")
-            response = await self.req.get(url, headers=self.headers)
-            response.raise_for_status()
-            return response.read()
 
     async def upload_activities_original_from_strava(
         self, datas, use_fake_garmin_device=False
@@ -737,32 +676,12 @@ class Garmin:
             tmp.write(file_body)
             tmp_path = tmp.name
         try:
-            if self._use_garminconnect:
-                # COM: use garminconnect
+            # Use garminconnect or garth for upload depending on client type
+            if self._is_garth_client:
                 result = await asyncio.to_thread(self._client.upload_activity, tmp_path)
-                print("garmin upload success: ", result)
             else:
-                # CN: use garth with httpx
-                with open(tmp_path, "rb") as f:
-                    files = {
-                        "file": (
-                            os.path.basename(tmp_path),
-                            f,
-                            "application/octet-stream",
-                        )
-                    }
-                    response = await self.req.post(
-                        self.upload_url, files=files, headers=self.headers
-                    )
-                    if response.status_code in (200, 201, 202, 204):
-                        print(f"garmin CN upload success: {response.status_code}")
-                    elif "Duplicate Activity" in response.text:
-                        # Duplicate Activity is expected - activity was already uploaded before
-                        print(f"garmin CN upload skipped (Duplicate Activity): {response.status_code}")
-                    else:
-                        print(
-                            f"garmin CN upload failed: {response.status_code} - {response.text}"
-                        )
+                result = await asyncio.to_thread(self._client.upload_activity, tmp_path)
+            print("garmin upload success: ", result)
         except Exception as e:
             print("garmin upload failed: ", e)
         finally:
@@ -863,6 +782,10 @@ async def download_garmin_data(
                                 try:
                                     os.rename(extracted_path, target_path)
                                     print(f"[DEBUG] {activity_id}: Renamed FIT file: {extracted_path} -> {target_path}")
+                                except FileExistsError:
+                                    # Target already exists, remove the duplicate
+                                    print(f"[DEBUG] {activity_id}: Target {target_path} already exists, removing duplicate {extracted_path}")
+                                    os.remove(extracted_path)
                                 except Exception as rename_err:
                                     print(f"[DEBUG] {activity_id}: Rename failed: {rename_err}")
                                     import glob
@@ -870,7 +793,10 @@ async def download_garmin_data(
                                     matches = glob.glob(pattern)
                                     if matches:
                                         print(f"[DEBUG] {activity_id}: Found matching files: {matches}")
-                                        os.rename(matches[0], target_path)
+                                        try:
+                                            os.rename(matches[0], target_path)
+                                        except FileExistsError:
+                                            os.remove(matches[0])
                         elif file_info.filename.endswith(".gpx"):
                             extracted_path = os.path.join(folder, file_info.filename)
                             target_path = os.path.join(FOLDER_DICT["gpx"], f"{activity_id}.gpx")
@@ -959,139 +885,93 @@ def get_garmin_summary_infos(activity_summary, activity_id):
 
 def restore_or_login(username, password, auth_domain):
     """
-    Login to Garmin and return the appropriate client.
+    Login to Garmin and return a GarminConnectLib client.
 
-    For COM: returns a GarminConnectLib (garminconnect library)
-    For CN: returns a secret_string (garth library)
-
+    For COM: Uses garminconnect library with standard OAuth flow.
+    For CN: Uses garminconnect first, falls back to garth library if that fails.
+    
     Handles 429 errors by trying to use existing token.
     """
-    domain = "garmin.cn" if auth_domain == "CN" else "garmin.com"
-    token_file = f".token_{domain.replace('.', '_')}.pkl"
+    is_cn = auth_domain == "CN"
+    domain = "garmin.cn" if is_cn else "garmin.com"
+    tokenstore = os.path.expanduser(f"~/.garminconnect/{domain}")
+    os.makedirs(tokenstore, exist_ok=True)
 
-    # Use garminconnect for COM, garth for CN
-    if auth_domain == "CN":
-        # CN: use garth
-        garth.configure(domain=domain, ssl_verify=False)
-
-        # Try to load existing token first
-        if os.path.exists(token_file):
-            try:
-                with open(token_file, "rb") as f:
-                    token_data = f.read()
-                if token_data:
-                    garth.client.loads(token_data)
-                    if not garth.client.oauth2_token.expired:
-                        print(f"Loaded existing token for {auth_domain}")
-                        return token_data
-            except Exception:
-                pass
-
-        # Login with credentials
-        print(f"Logging in to {auth_domain} with credentials...")
-        max_retries = 5
-        base_wait_time = 30  # seconds
-
-        for attempt in range(max_retries):
-            try:
-                garth.client.login(username, password)
-                secret_string = garth.client.dumps()
-                with open(token_file, "wb") as f:
-                    pickle.dump(secret_string, f)
-                print(f"Saved token to {token_file}")
-                return secret_string
-            except Exception as e:
-                error_msg = str(e)
-                if "429" in error_msg or "Too many requests" in error_msg:
-                    if os.path.exists(token_file):
-                        try:
-                            with open(token_file, "rb") as f:
-                                token_data = f.read()
-                            if token_data:
-                                garth.client.loads(token_data)
-                                if not garth.client.oauth2_token.expired:
-                                    print(
-                                        f"Using saved token after 429 for {auth_domain}"
-                                    )
-                                    return token_data
-                        except Exception:
-                            pass
-
-                    if attempt < max_retries - 1:
-                        wait_time = base_wait_time * (2**attempt)
-                        print(
-                            f"Rate limit (429) during login for {auth_domain}, "
-                            f"attempt {attempt + 1}/{max_retries}. "
-                            f"Waiting {wait_time}s before retry..."
-                        )
-                        time.sleep(wait_time)
-                    else:
-                        print(
-                            f"Rate limit (429) persisted after {max_retries} attempts for {auth_domain}"
-                        )
-                        raise e
-                else:
-                    raise e
-    else:
-        # COM: use garminconnect
-        tokenstore = os.path.expanduser(f"~/.garminconnect/{domain}")
-        os.makedirs(tokenstore, exist_ok=True)
-
-        # Try to restore saved tokens
+    # For CN, try garth first (more reliable for garmin.cn)
+    if is_cn and GARTH_CN_AVAILABLE:
+        print(f"[restore_or_login] Attempting CN login with garth library...")
         try:
-            client = GarminConnectLib(username, password)
+            garth_client = create_garth_cn_client(username, password)
+            print(f"[restore_or_login] CN login successful via garth for {auth_domain}")
+            return garth_client
+        except Exception as e:
+            print(f"[restore_or_login] garth CN login failed: {e}")
+            print("[restore_or_login] Falling back to garminconnect...")
+
+    # Try to restore saved tokens first (for garminconnect)
+    try:
+        client = GarminConnectLib(username, password, is_cn=is_cn)
+        client.login(tokenstore)
+        print(f"Logged in using saved tokens for {auth_domain}")
+        return client
+    except GarminConnectTooManyRequestsError as e:
+        print(f"Rate limit (429) during login for {auth_domain}: {e}")
+        raise e
+    except (
+        GarminConnectAuthenticationError,
+        GarminConnectConnectionError,
+    ):
+        print("No valid tokens found — logging in with credentials.")
+
+    # Login with credentials
+    print(f"Logging in to {auth_domain} with credentials...")
+    max_retries = 5
+    base_wait_time = 30  # seconds
+
+    for attempt in range(max_retries):
+        try:
+            client = GarminConnectLib(username, password, is_cn=is_cn)
             client.login(tokenstore)
-            print(f"Logged in using saved tokens for {auth_domain}")
+            print(f"Login successful for {auth_domain}")
             return client
         except GarminConnectTooManyRequestsError as e:
-            print(f"Rate limit (429) during login for {auth_domain}: {e}")
-            raise e
-        except (
-            GarminConnectAuthenticationError,
-            GarminConnectConnectionError,
-        ):
-            print("No valid tokens found — logging in with credentials.")
-
-        # Login with credentials
-        print(f"Logging in to {auth_domain} with credentials...")
-        max_retries = 5
-        base_wait_time = 30  # seconds
-
-        for attempt in range(max_retries):
-            try:
-                client = GarminConnectLib(username, password)
-                client.login(tokenstore)
-                print(f"Login successful for {auth_domain}")
-                return client
-            except GarminConnectTooManyRequestsError as e:
-                if attempt < max_retries - 1:
-                    wait_time = base_wait_time * (2**attempt)
-                    print(
-                        f"Rate limit (429) during login for {auth_domain}, "
-                        f"attempt {attempt + 1}/{max_retries}. "
-                        f"Waiting {wait_time}s before retry..."
-                    )
-                    time.sleep(wait_time)
-                else:
-                    print(
-                        f"Rate limit (429) persisted after {max_retries} attempts for {auth_domain}"
-                    )
-                    raise e
-            except GarminConnectAuthenticationError:
-                print("Wrong credentials — please check your email and password.")
-                raise
-            except GarminConnectConnectionError as e:
-                print(f"Connection error: {e}")
-                if attempt < max_retries - 1:
-                    wait_time = base_wait_time * (2**attempt)
-                    print(
-                        f"Connection error for {auth_domain}, "
-                        f"attempt {attempt + 1}/{max_retries}. "
-                        f"Waiting {wait_time}s before retry..."
-                    )
-                    time.sleep(wait_time)
-                else:
-                    raise e
+            if attempt < max_retries - 1:
+                wait_time = base_wait_time * (2**attempt)
+                print(
+                    f"Rate limit (429) during login for {auth_domain}, "
+                    f"attempt {attempt + 1}/{max_retries}. "
+                    f"Waiting {wait_time}s before retry..."
+                )
+                time.sleep(wait_time)
+            else:
+                print(
+                    f"Rate limit (429) persisted after {max_retries} attempts for {auth_domain}"
+                )
+                raise e
+        except GarminConnectAuthenticationError:
+            print("Wrong credentials — please check your email and password.")
+            raise
+        except GarminConnectConnectionError as e:
+            print(f"Connection error: {e}")
+            if attempt < max_retries - 1:
+                wait_time = base_wait_time * (2**attempt)
+                print(
+                    f"Connection error for {auth_domain}, "
+                    f"attempt {attempt + 1}/{max_retries}. "
+                    f"Waiting {wait_time}s before retry..."
+                )
+                time.sleep(wait_time)
+            else:
+                # For CN, try garth as final fallback
+                if is_cn and GARTH_CN_AVAILABLE:
+                    print("[restore_or_login] garminconnect failed for CN, trying garth as final fallback...")
+                    try:
+                        garth_client = create_garth_cn_client(username, password)
+                        print(f"[restore_or_login] CN login successful via garth (final fallback) for {auth_domain}")
+                        return garth_client
+                    except Exception as garth_e:
+                        print(f"[restore_or_login] garth fallback also failed: {garth_e}")
+                raise e
 
 
 async def download_new_activities(
