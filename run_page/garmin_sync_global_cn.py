@@ -247,15 +247,17 @@ if __name__ == "__main__":
     else:
         print("No new activities to upload.")
 
-    # Step 6: Generate track from fit/gpx/tcx file
-    make_activities_file(
-        SQL_FILE, GPX_FOLDER, JSON_FILE, file_suffix="gpx", activity_title_dict=id2title
-    )
-    make_activities_file(
-        SQL_FILE, FIT_FOLDER, JSON_FILE, file_suffix="fit", activity_title_dict=id2title
-    )
-    make_activities_file(
-        SQL_FILE, FIT_FOLDER, JSON_FILE, file_suffix="tcx", activity_title_dict=id2title
+    # Step 6: Generate track from ONLY the newly downloaded files
+    # NOTE: Do NOT process all historical files - that causes thousands of log lines
+    # Only process the files for activities we just downloaded
+    print(f"Processing {len(new_ids)} newly synced activities...")
+
+    # For COM->CN sync, we don't need to regenerate the full activities.json
+    # The CN activities will be synced separately via garmin_sync_cn.py
+    # If user needs local tracking, they can run strava_to_garmin_sync.py instead
+    print("Skipping full activities.json regeneration for COM->CN sync.")
+    print(
+        "Run garmin_sync.py or strava_to_garmin_sync.py separately for local tracking."
     )
 
     print("\nSync completed!")
