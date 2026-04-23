@@ -13,6 +13,7 @@ Reference: strava_to_garmin_sync.py login and sync logic pattern.
 import argparse
 import asyncio
 import os
+import re
 import sys
 import time
 from datetime import datetime
@@ -87,6 +88,7 @@ async def download_with_cn_filter(
     garmin_id2type = {}  # Collect activity type for post-upload CN update
 
     filtered_count = 0  # Track how many activities were filtered (already exist in CN)
+    _debug_printed = 0  # Print first 3 COM timestamps for debugging
     for id in activity_ids:
         try:
             activity_summary = await garmin_com.get_activity_summary(id)
@@ -98,19 +100,26 @@ async def download_with_cn_filter(
                 or activity_summary.get("summaryDTO", {}).get("distance", 0)
                 or 0
             )
+            if _debug_printed < 3:
+                print(f"[DEBUG] COM activity {id}: start_time='{start_time}', distance={distance}")
+                _debug_printed += 1
 
             # Check if this activity already exists in CN (by time + distance with tolerance)
             # Use distance tolerance of 1.0 meters to handle floating point precision differences
             # between COM and CN (GPS distance can vary slightly due to different calculation methods)
             exists_in_cn = False
+            matched_cn_time = None
             if start_time:
                 for cn_time, cn_dist in cn_existing_timestamps:
-                    # If both have valid distances, check with tolerance
-                    # If one side is 0/null, rely on the other (some activities have null distance)
-                    if cn_time == start_time:
+                    # Normalize timestamps for comparison (strip sub-second precision and timezone)
+                    import re
+                    cn_normalized = re.sub(r'\.\d+(.*?)$', '', cn_time).split('+')[0].split('Z')[0]
+                    com_normalized = re.sub(r'\.\d+(.*?)$', '', start_time).split('+')[0].split('Z')[0]
+                    if cn_normalized == com_normalized:
                         dist_diff = abs(cn_dist - distance)
                         if dist_diff < 1.0 or (cn_dist == 0 or distance == 0):
                             exists_in_cn = True
+                            matched_cn_time = cn_time
                             break
             if exists_in_cn:
                 filtered_count += 1
