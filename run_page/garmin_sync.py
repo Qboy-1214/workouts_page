@@ -843,34 +843,47 @@ async def download_garmin_data(
         async with aiofiles.open(file_path, "wb") as fb:
             await fb.write(file_data)
         if need_unzip:
-            zip_file = zipfile.ZipFile(file_path, "r")
-            for file_info in zip_file.infolist():
-                zip_file.extract(file_info, folder)
-                if file_info.filename.endswith(".fit"):
-                    extracted_path = os.path.join(folder, file_info.filename)
-                    target_path = os.path.join(folder, f"{activity_id}.fit")
-                    print(f"[DEBUG] ZIP file {activity_id}: filename={file_info.filename}, extracted={extracted_path}, target={target_path}")
-                    if extracted_path != target_path:
-                        try:
+            # Check if it's actually a ZIP file
+            if file_data[:2] == b'PK':  # ZIP file signature
+                print(f"[DEBUG] {activity_id}: File is ZIP format")
+                zip_file = zipfile.ZipFile(file_path, "r")
+                for file_info in zip_file.infolist():
+                    zip_file.extract(file_info, folder)
+                    if file_info.filename.endswith(".fit"):
+                        extracted_path = os.path.join(folder, file_info.filename)
+                        target_path = os.path.join(folder, f"{activity_id}.fit")
+                        print(f"[DEBUG] ZIP file {activity_id}: filename={file_info.filename}, extracted={extracted_path}, target={target_path}")
+                        if extracted_path != target_path:
+                            try:
+                                os.rename(extracted_path, target_path)
+                                print(f"[DEBUG] Renamed FIT file: {extracted_path} -> {target_path}")
+                            except Exception as rename_err:
+                                print(f"[DEBUG] Rename failed: {rename_err}")
+                                # Try to find the actual file
+                                import glob
+                                pattern = os.path.join(folder, f"*{activity_id}*.fit")
+                                matches = glob.glob(pattern)
+                                if matches:
+                                    print(f"[DEBUG] Found matching files: {matches}")
+                                    os.rename(matches[0], target_path)
+                    elif file_info.filename.endswith(".gpx"):
+                        extracted_path = os.path.join(folder, file_info.filename)
+                        target_path = os.path.join(FOLDER_DICT["gpx"], f"{activity_id}.gpx")
+                        if extracted_path != target_path:
                             os.rename(extracted_path, target_path)
-                            print(f"[DEBUG] Renamed FIT file: {extracted_path} -> {target_path}")
-                        except Exception as rename_err:
-                            print(f"[DEBUG] Rename failed: {rename_err}")
-                            # Try to find the actual file
-                            import glob
-                            pattern = os.path.join(folder, f"*{activity_id}*.fit")
-                            matches = glob.glob(pattern)
-                            if matches:
-                                print(f"[DEBUG] Found matching files: {matches}")
-                                os.rename(matches[0], target_path)
-                elif file_info.filename.endswith(".gpx"):
-                    extracted_path = os.path.join(folder, file_info.filename)
-                    target_path = os.path.join(FOLDER_DICT["gpx"], f"{activity_id}.gpx")
-                    if extracted_path != target_path:
-                        os.rename(extracted_path, target_path)
-                else:
-                    os.remove(os.path.join(folder, file_info.filename))
-            os.remove(file_path)
+                    else:
+                        os.remove(os.path.join(folder, file_info.filename))
+                zip_file.close()
+                os.remove(file_path)
+            else:
+                # It's a direct FIT file, just rename .zip to .fit
+                print(f"[DEBUG] {activity_id}: File is direct FIT format, renaming {file_path} -> {folder}/{activity_id}.fit")
+                target_path = os.path.join(folder, f"{activity_id}.fit")
+                try:
+                    os.rename(file_path, target_path)
+                    print(f"[DEBUG] Direct FIT renamed: {file_path} -> {target_path}")
+                except Exception as rename_err:
+                    print(f"[DEBUG] Direct FIT rename failed: {rename_err}")
     except Exception as e:
         print(f"Failed to download activity {activity_id}: {str(e)}")
         traceback.print_exc()
