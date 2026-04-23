@@ -27,6 +27,7 @@ from garminconnect import (
 # Import garth for CN authentication fallback
 try:
     from garmin_cn_garth import GarminCngarthClient, create_garth_cn_client
+
     GARTH_CN_AVAILABLE = True
 except ImportError:
     GARTH_CN_AVAILABLE = False
@@ -230,8 +231,11 @@ class Garmin:
         self._client = client  # GarminConnectLib or GarthClientWrapper instance
 
         # Check if using garth client (CN with garth)
-        self._is_garth_client = hasattr(client, '_garth_client') or type(client).__name__ == 'GarminCngarthClient'
-        
+        self._is_garth_client = (
+            hasattr(client, "_garth_client")
+            or type(client).__name__ == "GarminCngarthClient"
+        )
+
         # Select URL dict based on auth_domain
         if self.auth_domain == "CN":
             url_dict = GARMIN_CN_URL_DICT
@@ -247,7 +251,7 @@ class Garmin:
         if self._client is None:
             print("[Garmin.get_activities] No garmin client, returning empty list")
             return []
-        
+
         # Handle garth client differently
         if self._is_garth_client:
             activities = await asyncio.to_thread(
@@ -274,10 +278,12 @@ class Garmin:
         if self._client is None:
             print("[Garmin.get_activity_summary] No garmin client, returning empty")
             return {}
-        
+
         # Handle garth client differently
         if self._is_garth_client:
-            return await asyncio.to_thread(self._client.get_activity_summary, activity_id)
+            return await asyncio.to_thread(
+                self._client.get_activity_summary, activity_id
+            )
         else:
             # Use garminconnect library (activity_id must be int)
             return await asyncio.to_thread(self._client.get_activity, int(activity_id))
@@ -289,7 +295,7 @@ class Garmin:
         if self._client is None:
             print("[Garmin.download_activity] No garmin client, returning empty")
             return b""
-        
+
         # Handle garth client differently
         if self._is_garth_client:
             return await asyncio.to_thread(
@@ -766,8 +772,10 @@ async def download_garmin_data(
             await fb.write(file_data)
         if need_unzip:
             # Check if it's actually a ZIP file
-            if file_data[:2] == b'PK':  # ZIP file signature
-                print(f"[DEBUG] {activity_id}: File is ZIP format, checking contents...")
+            if file_data[:2] == b"PK":  # ZIP file signature
+                print(
+                    f"[DEBUG] {activity_id}: File is ZIP format, checking contents..."
+                )
                 try:
                     zip_file = zipfile.ZipFile(file_path, "r")
                     file_list = zip_file.namelist()
@@ -777,46 +785,69 @@ async def download_garmin_data(
                         if file_info.filename.endswith(".fit"):
                             extracted_path = os.path.join(folder, file_info.filename)
                             target_path = os.path.join(folder, f"{activity_id}.fit")
-                            print(f"[DEBUG] {activity_id}: Found FIT in ZIP: {file_info.filename}, extracted={extracted_path}, target={target_path}")
+                            print(
+                                f"[DEBUG] {activity_id}: Found FIT in ZIP: {file_info.filename}, extracted={extracted_path}, target={target_path}"
+                            )
                             if extracted_path != target_path:
                                 try:
                                     os.rename(extracted_path, target_path)
-                                    print(f"[DEBUG] {activity_id}: Renamed FIT file: {extracted_path} -> {target_path}")
+                                    print(
+                                        f"[DEBUG] {activity_id}: Renamed FIT file: {extracted_path} -> {target_path}"
+                                    )
                                 except FileExistsError:
                                     # Target already exists, remove the duplicate
-                                    print(f"[DEBUG] {activity_id}: Target {target_path} already exists, removing duplicate {extracted_path}")
+                                    print(
+                                        f"[DEBUG] {activity_id}: Target {target_path} already exists, removing duplicate {extracted_path}"
+                                    )
                                     os.remove(extracted_path)
                                 except Exception as rename_err:
-                                    print(f"[DEBUG] {activity_id}: Rename failed: {rename_err}")
+                                    print(
+                                        f"[DEBUG] {activity_id}: Rename failed: {rename_err}"
+                                    )
                                     import glob
-                                    pattern = os.path.join(folder, f"*{activity_id}*.fit")
+
+                                    pattern = os.path.join(
+                                        folder, f"*{activity_id}*.fit"
+                                    )
                                     matches = glob.glob(pattern)
                                     if matches:
-                                        print(f"[DEBUG] {activity_id}: Found matching files: {matches}")
+                                        print(
+                                            f"[DEBUG] {activity_id}: Found matching files: {matches}"
+                                        )
                                         try:
                                             os.rename(matches[0], target_path)
                                         except FileExistsError:
                                             os.remove(matches[0])
                         elif file_info.filename.endswith(".gpx"):
                             extracted_path = os.path.join(folder, file_info.filename)
-                            target_path = os.path.join(FOLDER_DICT["gpx"], f"{activity_id}.gpx")
+                            target_path = os.path.join(
+                                FOLDER_DICT["gpx"], f"{activity_id}.gpx"
+                            )
                             if extracted_path != target_path:
                                 os.rename(extracted_path, target_path)
-                        elif file_info.filename.endswith(".tcx") or file_info.filename.uppercase().endswith(".TCX"):
+                        elif file_info.filename.endswith(
+                            ".tcx"
+                        ) or file_info.filename.uppercase().endswith(".TCX"):
                             # TCX format also valid for upload - save as {id}.tcx
                             extracted_path = os.path.join(folder, file_info.filename)
                             target_path = os.path.join(folder, f"{activity_id}.tcx")
-                            print(f"[DEBUG] {activity_id}: Found TCX in ZIP: {file_info.filename}")
+                            print(
+                                f"[DEBUG] {activity_id}: Found TCX in ZIP: {file_info.filename}"
+                            )
                             if extracted_path != target_path:
                                 try:
                                     os.rename(extracted_path, target_path)
                                 except Exception as rename_err:
-                                    print(f"[DEBUG] {activity_id}: Rename TCX failed: {rename_err}")
+                                    print(
+                                        f"[DEBUG] {activity_id}: Rename TCX failed: {rename_err}"
+                                    )
                         else:
                             extracted_path = os.path.join(folder, file_info.filename)
                             if os.path.exists(extracted_path):
                                 os.remove(extracted_path)
-                                print(f"[DEBUG] {activity_id}: Removed non-FIT/TCX/GPX file: {file_info.filename}")
+                                print(
+                                    f"[DEBUG] {activity_id}: Removed non-FIT/TCX/GPX file: {file_info.filename}"
+                                )
                     zip_file.close()
                     os.remove(file_path)
                 except zipfile.BadZipFile as e:
@@ -825,7 +856,9 @@ async def download_garmin_data(
                     print(f"[DEBUG] {activity_id}: Error processing ZIP: {e}")
             else:
                 # It's a direct FIT file, just rename .zip to .fit
-                print(f"[DEBUG] {activity_id}: File is direct FIT format, renaming {file_path} -> {folder}/{activity_id}.fit")
+                print(
+                    f"[DEBUG] {activity_id}: File is direct FIT format, renaming {file_path} -> {folder}/{activity_id}.fit"
+                )
                 target_path = os.path.join(folder, f"{activity_id}.fit")
                 try:
                     os.rename(file_path, target_path)
@@ -889,7 +922,7 @@ def restore_or_login(username, password, auth_domain):
 
     For COM: Uses garminconnect library with standard OAuth flow.
     For CN: Uses garminconnect first, falls back to garth library if that fails.
-    
+
     Handles 429 errors by trying to use existing token.
     """
     is_cn = auth_domain == "CN"
@@ -964,18 +997,30 @@ def restore_or_login(username, password, auth_domain):
             else:
                 # For CN, try garth as final fallback
                 if is_cn and GARTH_CN_AVAILABLE:
-                    print("[restore_or_login] garminconnect failed for CN, trying garth as final fallback...")
+                    print(
+                        "[restore_or_login] garminconnect failed for CN, trying garth as final fallback..."
+                    )
                     try:
                         garth_client = create_garth_cn_client(username, password)
-                        print(f"[restore_or_login] CN login successful via garth (final fallback) for {auth_domain}")
+                        print(
+                            f"[restore_or_login] CN login successful via garth (final fallback) for {auth_domain}"
+                        )
                         return garth_client
                     except Exception as garth_e:
-                        print(f"[restore_or_login] garth fallback also failed: {garth_e}")
+                        print(
+                            f"[restore_or_login] garth fallback also failed: {garth_e}"
+                        )
                 raise e
 
 
 async def download_new_activities(
-    client, auth_domain, downloaded_ids, is_only_running, folder, file_type, max_activities=10
+    client,
+    auth_domain,
+    downloaded_ids,
+    is_only_running,
+    folder,
+    file_type,
+    max_activities=10,
 ):
     garmin_client = Garmin(client, auth_domain, is_only_running)
     # because I don't find a para for after time, so I use garmin-id as filename
@@ -984,7 +1029,9 @@ async def download_new_activities(
     to_generate_garmin_ids = list(set(activity_ids) - set(downloaded_ids))
     # Limit to most recent activities
     to_generate_garmin_ids = to_generate_garmin_ids[:max_activities]
-    print(f"{len(to_generate_garmin_ids)} new activities to be downloaded (limited to {max_activities} most recent)")
+    print(
+        f"{len(to_generate_garmin_ids)} new activities to be downloaded (limited to {max_activities} most recent)"
+    )
 
     to_generate_garmin_id2title = {}
     garmin_summary_infos_dict = {}
