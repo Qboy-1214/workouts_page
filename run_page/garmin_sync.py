@@ -689,7 +689,12 @@ class Garmin:
                 result = await asyncio.to_thread(self._client.upload_activity, tmp_path)
             print("garmin upload success: ", result)
         except Exception as e:
-            print("garmin upload failed: ", e)
+            # Check if it's a 409 Conflict error (activity already exists)
+            error_str = str(e)
+            if "409" in error_str or "Conflict" in error_str:
+                print(f"garmin upload skipped (already exists): {file}")
+            else:
+                print("garmin upload failed: ", e)
         finally:
             try:
                 os.remove(tmp_path)
