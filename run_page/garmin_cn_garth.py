@@ -138,7 +138,9 @@ class GarminCngarthClient:
                         else None
                     ),
                 }
-                # Add summary fields if available
+                # distance is a top-level field in Activity.list() response (not inside summary)
+                act_dict["distance"] = act.distance
+                # Add summary fields if available (from Activity.get())
                 if act.summary:
                     act_dict.update(
                         {

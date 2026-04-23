@@ -4,6 +4,7 @@ Sync activities from Garmin International (COM) to Garmin China (CN).
 Workflow:
 1. Login to Garmin COM and download new activities (not in CN)
 2. Upload new activities to Garmin CN
+3. Update activity name and type in CN (match by start time)
 
 This is used after strava_to_garmin_sync.py syncs from Strava to Garmin COM.
 Reference: strava_to_garmin_sync.py login and sync logic pattern.
@@ -14,6 +15,7 @@ import asyncio
 import os
 import sys
 import time
+from datetime import datetime
 
 from config import FIT_FOLDER, GPX_FOLDER, JSON_FILE, SQL_FILE
 from garmin_sync import Garmin, restore_or_login, get_activity_id_list
@@ -23,6 +25,7 @@ from garmin_sync import (
     gather_with_concurrency,
 )
 from utils import make_activities_file
+from activity_type_map import map_com_type_to_cn
 
 
 async def get_cn_existing_timestamps(cn_client):
@@ -81,6 +84,7 @@ async def download_with_cn_filter(
     to_generate_ids = []
     to_generate_garmin_id2title = {}
     garmin_summary_infos_dict = {}
+    garmin_id2type = {}  # Collect activity type for post-upload CN update
 
     filtered_count = 0  # Track how many activities were filtered (already exist in CN)
     for id in activity_ids:
@@ -113,11 +117,16 @@ async def download_with_cn_filter(
                 continue
 
             activity_title = activity_summary.get("activityName", "")
+            activity_type_key = (
+                activity_summary.get("activityType", {}).get("typeKey", "")
+                or activity_summary.get("sportType", "")
+            )
             to_generate_ids.append(id)
             to_generate_garmin_id2title[id] = activity_title
             garmin_summary_infos_dict[id] = get_garmin_summary_infos(
                 activity_summary, id
             )
+            garmin_id2type[id] = activity_type_key
         except Exception as e:
             print(f"Failed to get activity summary {id}: {str(e)}")
             continue
@@ -149,16 +158,188 @@ async def download_with_cn_filter(
     )
     print(f"Download finished. Elapsed {time.time()-start_time} seconds")
 
-    return to_generate_ids, to_generate_garmin_id2title
+    return to_generate_ids, to_generate_garmin_id2title, garmin_id2type
 
 
-async def upload_activities_to_garmin_cn(garmin_cn_wrapper, files):
-    """Upload activities to Garmin CN using the wrapper pattern from strava_to_garmin_sync.py"""
+async def upload_activities_to_garmin_cn(garmin_cn_wrapper, files, id2title, id2type):
+    """Upload activities to Garmin CN and update name/type (match by start time).
+
+    Args:
+        garmin_cn_wrapper: Garmin CN wrapper instance
+        files: List of file paths to upload
+        id2title: Dict mapping COM activity ID -> activity name
+        id2type: Dict mapping COM activity ID -> activity type key
+    """
     print(
         f"[upload_activities_to_garmin_cn] Starting upload to Garmin CN, auth domain: {garmin_cn_wrapper.auth_domain}"
     )
     await garmin_cn_wrapper.upload_activities_files(files)
+    print("[upload_activities_to_garmin_cn] Upload done. Updating name/type...")
+
+    # Update name and type for each uploaded activity
+    # Extract COM activity ID from filename (e.g., "123456789.fit" -> 123456789)
+    for filepath in files:
+        try:
+            filename = os.path.basename(filepath)
+            com_id_str = os.path.splitext(filename)[0]
+            try:
+                com_id = int(com_id_str)
+            except ValueError:
+                print(f"  [update] Could not parse activity ID from {filename}")
+                continue
+
+            activity_name = id2title.get(com_id, "")
+            com_type_key = id2type.get(com_id, "")
+            cn_type_key = map_com_type_to_cn(com_type_key)
+
+            # Find the newly uploaded activity in CN by start time
+            start_time = None
+            if com_id in id2title:
+                # Get start time from garmin_summary_infos if available
+                # For simplicity, search by activity name pattern (recent uploads first)
+                pass
+
+            # Get start time from the activity's summary info in the FIT/GPX file
+            # Use the uploaded file to extract start time
+            start_time_iso = _extract_start_time_from_file(filepath)
+            if not start_time_iso:
+                print(f"  [update] Could not extract start time from {filename}, skipping name/type update")
+                continue
+
+            # Search CN activities to find the matching one
+            found_cn_id = None
+            current_cn_name = None
+            current_cn_type = None
+
+            for offset in range(0, 300, 100):
+                cn_activities = await garmin_cn_wrapper.get_activities(offset, 100)
+                if not cn_activities:
+                    break
+
+                for act in cn_activities:
+                    act_start = act.get("startTimeGMT", "")
+                    if act_start and act_start == start_time_iso:
+                        found_cn_id = act.get("activityId")
+                        current_cn_name = act.get("activityName", "")
+                        current_cn_type = (
+                            act.get("activityType", {}).get("typeKey", "")
+                            or act.get("activityType", {}).get("typeGui", "")
+                        )
+                        break
+
+                if found_cn_id:
+                    break
+
+            if not found_cn_id:
+                print(f"  [update] Could not find CN activity for {filename} (start: {start_time_iso}), skipping")
+                continue
+
+            print(
+                f"  [update] CN activity {found_cn_id}: name='{current_cn_name}' -> '{activity_name}', type='{current_cn_type}' -> '{cn_type_key}'"
+            )
+
+            # Update name if different
+            if activity_name and activity_name != current_cn_name:
+                try:
+                    await asyncio.to_thread(
+                        garmin_cn_wrapper._client.update_activity_name,
+                        found_cn_id,
+                        activity_name,
+                    )
+                    print(f"    Updated name to: '{activity_name}'")
+                except Exception as name_err:
+                    print(f"    Could not update name: {name_err}")
+
+            # Update type if different
+            if cn_type_key and cn_type_key != current_cn_type:
+                try:
+                    types = await asyncio.to_thread(
+                        garmin_cn_wrapper._client.get_activity_types
+                    )
+                    type_id = None
+                    parent_type_id = None
+                    for t in types:
+                        if t.get("typeKey") == cn_type_key:
+                            type_id = t.get("id")
+                            parent_type_id = t.get("parentId")
+                            break
+
+                    if type_id:
+                        await asyncio.to_thread(
+                            garmin_cn_wrapper._client.update_activity_type,
+                            found_cn_id,
+                            cn_type_key,
+                            type_id,
+                            parent_type_id,
+                        )
+                        print(f"    Updated type to: '{cn_type_key}'")
+                    else:
+                        print(f"    CN type '{cn_type_key}' not found in available types")
+                except Exception as type_err:
+                    print(f"    Could not update type: {type_err}")
+
+        except Exception as e:
+            print(f"  [update] Error updating {filepath}: {e}")
+
     print("[upload_activities_to_garmin_cn] Done")
+
+
+def _extract_start_time_from_file(filepath):
+    """Extract start time from FIT/GPX/TCX file for CN activity matching."""
+    import struct
+
+    ext = os.path.splitext(filepath)[-1].lower()
+
+    try:
+        if ext == ".fit":
+            # FIT files store start time as a uint32 (timestamp) at a known offset
+            # Read file and look for FIT header + data
+            with open(filepath, "rb") as f:
+                data = f.read()
+
+            # Try to find the start_time field in FIT file
+            # FIT epoch: 631065600000 (Dec 31, 1989 00:00:00 UTC in ms)
+            # Look for timestamps in a reasonable range (2020-2030)
+            # This is a simplified approach - look for the timestamp value
+            import datetime as dt
+
+            min_ts = int(dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc).timestamp())
+            max_ts = int(dt.datetime(2030, 12, 31, tzinfo=dt.timezone.utc).timestamp())
+
+            # Search for uint32 timestamps in the valid range
+            data_words = struct.unpack(f"<{len(data)//4}I", data[:(len(data)//4)*4])
+            for i, val in enumerate(data_words):
+                if min_ts <= val <= max_ts:
+                    # Found a valid timestamp - this is likely the start time
+                    start_dt = dt.datetime.fromtimestamp(val, tz=dt.timezone.utc)
+                    return start_dt.strftime("%Y-%m-%dT%H:%M:%S")
+
+        elif ext in (".gpx", ".tcx"):
+            # Parse XML to find time element
+            try:
+                import xml.etree.ElementTree as ET
+
+                tree = ET.parse(filepath)
+                root = tree.getroot()
+
+                # GPX: {http://www.topografix.com/GPX/1/1}time or {http://www.garmin.com/xmlschemas/GpxExtensions/v3}Time
+                for elem in root.iter():
+                    tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+                    if tag == "time" and elem.text:
+                        # Parse and normalize
+                        time_str = elem.text.strip()
+                        try:
+                            dt_obj = dt.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+                            return dt_obj.strftime("%Y-%m-%dT%H:%M:%S")
+                        except ValueError:
+                            pass
+            except Exception:
+                pass
+
+    except Exception:
+        pass
+
+    return None
 
 
 if __name__ == "__main__":
@@ -263,7 +444,7 @@ if __name__ == "__main__":
         )
     )
     loop.run_until_complete(future)
-    new_ids, id2title = future.result()
+    new_ids, id2title, id2type = future.result()
 
     # Step 4: Find files to upload
     to_upload_files = []
@@ -301,7 +482,7 @@ if __name__ == "__main__":
         asyncio.set_event_loop(loop)
         try:
             future = asyncio.ensure_future(
-                upload_activities_to_garmin_cn(garmin_cn_wrapper, to_upload_files)
+                upload_activities_to_garmin_cn(garmin_cn_wrapper, to_upload_files, id2title, id2type)
             )
             loop.run_until_complete(future)
             print("Upload completed!")
