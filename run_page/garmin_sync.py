@@ -845,36 +845,45 @@ async def download_garmin_data(
         if need_unzip:
             # Check if it's actually a ZIP file
             if file_data[:2] == b'PK':  # ZIP file signature
-                print(f"[DEBUG] {activity_id}: File is ZIP format")
-                zip_file = zipfile.ZipFile(file_path, "r")
-                for file_info in zip_file.infolist():
-                    zip_file.extract(file_info, folder)
-                    if file_info.filename.endswith(".fit"):
-                        extracted_path = os.path.join(folder, file_info.filename)
-                        target_path = os.path.join(folder, f"{activity_id}.fit")
-                        print(f"[DEBUG] ZIP file {activity_id}: filename={file_info.filename}, extracted={extracted_path}, target={target_path}")
-                        if extracted_path != target_path:
-                            try:
+                print(f"[DEBUG] {activity_id}: File is ZIP format, checking contents...")
+                try:
+                    zip_file = zipfile.ZipFile(file_path, "r")
+                    file_list = zip_file.namelist()
+                    print(f"[DEBUG] {activity_id}: ZIP contents: {file_list}")
+                    for file_info in zip_file.infolist():
+                        zip_file.extract(file_info, folder)
+                        if file_info.filename.endswith(".fit"):
+                            extracted_path = os.path.join(folder, file_info.filename)
+                            target_path = os.path.join(folder, f"{activity_id}.fit")
+                            print(f"[DEBUG] {activity_id}: Found FIT in ZIP: {file_info.filename}, extracted={extracted_path}, target={target_path}")
+                            if extracted_path != target_path:
+                                try:
+                                    os.rename(extracted_path, target_path)
+                                    print(f"[DEBUG] {activity_id}: Renamed FIT file: {extracted_path} -> {target_path}")
+                                except Exception as rename_err:
+                                    print(f"[DEBUG] {activity_id}: Rename failed: {rename_err}")
+                                    import glob
+                                    pattern = os.path.join(folder, f"*{activity_id}*.fit")
+                                    matches = glob.glob(pattern)
+                                    if matches:
+                                        print(f"[DEBUG] {activity_id}: Found matching files: {matches}")
+                                        os.rename(matches[0], target_path)
+                        elif file_info.filename.endswith(".gpx"):
+                            extracted_path = os.path.join(folder, file_info.filename)
+                            target_path = os.path.join(FOLDER_DICT["gpx"], f"{activity_id}.gpx")
+                            if extracted_path != target_path:
                                 os.rename(extracted_path, target_path)
-                                print(f"[DEBUG] Renamed FIT file: {extracted_path} -> {target_path}")
-                            except Exception as rename_err:
-                                print(f"[DEBUG] Rename failed: {rename_err}")
-                                # Try to find the actual file
-                                import glob
-                                pattern = os.path.join(folder, f"*{activity_id}*.fit")
-                                matches = glob.glob(pattern)
-                                if matches:
-                                    print(f"[DEBUG] Found matching files: {matches}")
-                                    os.rename(matches[0], target_path)
-                    elif file_info.filename.endswith(".gpx"):
-                        extracted_path = os.path.join(folder, file_info.filename)
-                        target_path = os.path.join(FOLDER_DICT["gpx"], f"{activity_id}.gpx")
-                        if extracted_path != target_path:
-                            os.rename(extracted_path, target_path)
-                    else:
-                        os.remove(os.path.join(folder, file_info.filename))
-                zip_file.close()
-                os.remove(file_path)
+                        else:
+                            extracted_path = os.path.join(folder, file_info.filename)
+                            if os.path.exists(extracted_path):
+                                os.remove(extracted_path)
+                                print(f"[DEBUG] {activity_id}: Removed non-FIT/GPX file: {file_info.filename}")
+                    zip_file.close()
+                    os.remove(file_path)
+                except zipfile.BadZipFile as e:
+                    print(f"[DEBUG] {activity_id}: Bad ZIP file: {e}")
+                except Exception as e:
+                    print(f"[DEBUG] {activity_id}: Error processing ZIP: {e}")
             else:
                 # It's a direct FIT file, just rename .zip to .fit
                 print(f"[DEBUG] {activity_id}: File is direct FIT format, renaming {file_path} -> {folder}/{activity_id}.fit")
