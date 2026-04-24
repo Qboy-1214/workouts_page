@@ -431,6 +431,13 @@ async def _search_cn_activity_by_start_time(
             if not cn_activities:
                 continue
 
+            # Debug: show the first few CN activity times we're searching
+            if attempt == 0 and page_size == 50:
+                print(f"  [search] Target time: {start_time_iso}")
+                print(f"  [search] First 3 CN activity times:")
+                for i, act in enumerate(cn_activities[:3]):
+                    print(f"    [{i}] {act.get('startTimeGMT', 'N/A')} -> norm: {re.sub(r'\.\d+(.*?)$', '', act.get('startTimeGMT', '')).split('+')[0].split('Z')[0]}")
+
             for act in cn_activities:
                 act_start = act.get("startTimeGMT", "")
                 if act_start:
@@ -528,6 +535,7 @@ async def upload_activities_to_garmin_cn(
             start_time_iso = _extract_start_time_from_file(filepath)
             if not start_time_iso and id2start_time:
                 com_id_from_filename = os.path.splitext(filename)[0]
+                print(f"  [debug] Looking up start time for ID '{com_id_from_filename}' in id2start_time (keys: {list(id2start_time.keys())[:5]}...)")
                 start_time_iso = id2start_time.get(com_id_from_filename)
                 if start_time_iso:
                     print(
