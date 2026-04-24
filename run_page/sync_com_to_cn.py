@@ -303,20 +303,6 @@ async def upload_to_garmin_cn(cn_client, activity_data):
             print(f"  Upload failed: {upload_err}")
             return False
 
-    # If not found, try to upload
-    try:
-        result = await asyncio.to_thread(garmin_cn._client.upload_activity, file_path)
-        print(f"  Upload result: {result}")
-        return True
-    except Exception as upload_err:
-        err_str = str(upload_err)
-        if "409" in err_str or "Conflict" in err_str:
-            print(f"  Activity already exists (409 Conflict), already updated above")
-            return True
-        else:
-            print(f"  Upload failed: {upload_err}")
-            return False
-
 
 async def gather_with_concurrency(n, *tasks):
     """Run tasks with limited concurrency"""

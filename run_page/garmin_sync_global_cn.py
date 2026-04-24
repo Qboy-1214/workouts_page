@@ -29,6 +29,77 @@ from utils import make_activities_file
 from activity_type_map import map_com_type_to_cn
 
 
+async def get_cn_latest_start_time(cn_client):
+    """Get the start time of the most recent activity in Garmin CN.
+    
+    Returns normalized ISO timestamp string (YYYY-MM-DDTHH:MM:SS) or None if no activities.
+    This is used to determine which COM activities are newer than the latest CN activity.
+    """
+    garmin_cn = Garmin(cn_client, "CN", False)
+    activities = await garmin_cn.get_activities(0, 1)
+    if not activities:
+        print("[DEBUG] No activities found in Garmin CN")
+        return None
+    act = activities[0]
+    start_time = act.get("startTimeGMT", "")
+    if not start_time:
+        print("[DEBUG] CN latest activity has no startTimeGMT")
+        return None
+    # Normalize: strip sub-second precision and timezone
+    normalized = re.sub(r'\.\d+(.*?)$', '', start_time).split('+')[0].split('Z')[0]
+    print(f"[DEBUG] CN latest activity start time: {normalized} (original: {start_time})")
+    return normalized
+
+
+async def get_com_activities_since(com_client, since_start_time, limit=100):
+    """Get COM activities whose start time is newer than since_start_time.
+    
+    Args:
+        com_client: COM garth client
+        since_start_time: ISO timestamp string (YYYY-MM-DDTHH:MM:SS), only activities
+                         newer than this will be returned
+        limit: max number of activities to fetch from COM
+    
+    Returns list of activity summaries with startTimeGMT and distance.
+    """
+    garmin_com = Garmin(com_client, "COM", False)
+    activities = await garmin_com.get_activities(0, limit)
+    print(f"[DEBUG] Fetched {len(activities)} COM activities (requested limit: {limit})")
+    
+    if not since_start_time:
+        print("[DEBUG] No CN latest time provided, will return all fetched COM activities")
+        return activities
+    
+    # Filter to only activities newer than CN's latest
+    import datetime as dt
+    try:
+        cutoff_dt = dt.datetime.fromisoformat(since_start_time.replace("Z", "+00:00"))
+    except ValueError:
+        print(f"[DEBUG] Could not parse CN latest time '{since_start_time}', returning all")
+        return activities
+    
+    filtered = []
+    skipped = 0
+    for act in activities:
+        start_time = act.get("startTimeGMT", "")
+        if start_time:
+            try:
+                # Normalize to compare timestamps
+                norm = re.sub(r'\.\d+(.*?)$', '', start_time).split('+')[0].split('Z')[0]
+                act_dt = dt.datetime.fromisoformat(norm)
+                if act_dt > cutoff_dt:
+                    filtered.append(act)
+                else:
+                    skipped += 1
+            except ValueError:
+                filtered.append(act)  # Include if can't parse
+        else:
+            filtered.append(act)
+    
+    print(f"[DEBUG] COM: {len(filtered)} activities newer than CN latest, {skipped} skipped (older or equal)")
+    return filtered
+
+
 async def get_cn_existing_timestamps(cn_client):
     """Get activity timestamps that already exist in Garmin CN to avoid duplicates.
 
@@ -87,10 +158,76 @@ async def download_with_cn_filter(
     folder,
     file_type,
     max_activities=10000,
+    since_start_time=None,
 ):
-    """Download activities from COM, filtering out those that exist in CN"""
+    """Download activities from COM, filtering out those that exist in CN.
+    
+    If since_start_time is provided, only fetch COM activities newer than that time.
+    """
     garmin_com = Garmin(com_client, "COM", is_only_running)
-    activity_ids = await get_activity_id_list(garmin_com)
+    
+    # Build CN dedup set for fast lookup
+    cn_dedup_set = set()
+    for normalized_time, entries in cn_existing_timestamps.items():
+        for dist, cid in entries:
+            cn_dedup_set.add(normalized_time)
+    
+    # Get COM activities: if since_start_time given, fetch only recent batch (time-filtered)
+    # Otherwise, get all (existing behavior)
+    if since_start_time:
+        # Get COM activities, filter by start time > CN latest
+        import datetime as dt
+        try:
+            cutoff_dt = dt.datetime.fromisoformat(since_start_time.replace("Z", "+00:00"))
+        except ValueError:
+            cutoff_dt = None
+        
+        print(f"[DEBUG] Fetching COM activities newer than {since_start_time}...")
+        
+        # Fetch in batches until we have enough (activities are sorted newest first)
+        all_com_activities = []
+        start = 0
+        limit = 100
+        while True:
+            batch = await garmin_com.get_activities(start, limit)
+            if not batch:
+                break
+            all_com_activities.extend(batch)
+            if len(batch) < limit:
+                break
+            # Safety: cap at 500 entries to avoid excessive API calls
+            if start >= 400:
+                print(f"[DEBUG] Stopping COM fetch after {start + limit} entries")
+                break
+            start += limit
+        
+        # Filter by time: only keep activities newer than CN latest
+        filtered_com = []
+        skipped_older = 0
+        for act in all_com_activities:
+            start_time = act.get("startTimeGMT", "")
+            if start_time and cutoff_dt:
+                try:
+                    norm = re.sub(r'\.\d+(.*?)$', '', start_time).split('+')[0].split('Z')[0]
+                    act_dt = dt.datetime.fromisoformat(norm)
+                    if act_dt <= cutoff_dt:
+                        skipped_older += 1
+                        continue
+                except ValueError:
+                    pass  # Include if can't parse
+            filtered_com.append(act)
+        
+        print(f"[DEBUG] COM: {len(filtered_com)} activities to process (newer than CN), {skipped_older} older skipped")
+        
+        # Extract activity IDs from filtered list
+        activity_ids = [str(act.get("activityId", "")) for act in filtered_com if act.get("activityId")]
+        # Build activity_id -> summary dict for already-fetched summaries
+        activity_summaries_map = {str(act.get("activityId", "")): act for act in filtered_com}
+        got_summaries_from_list = True
+    else:
+        activity_ids = await get_activity_id_list(garmin_com)
+        activity_summaries_map = {}
+        got_summaries_from_list = False
 
     # Filter out activities that already exist in CN (match by time + distance)
     to_generate_ids = []
@@ -103,7 +240,11 @@ async def download_with_cn_filter(
 
     for id in activity_ids:
         try:
-            activity_summary = await garmin_com.get_activity_summary(id)
+            # Use pre-fetched summary if available (time-filtered path), otherwise fetch individually
+            if got_summaries_from_list and id in activity_summaries_map:
+                activity_summary = activity_summaries_map[id]
+            else:
+                activity_summary = await garmin_com.get_activity_summary(id)
             start_time = activity_summary.get(
                 "startTimeGMT", ""
             ) or activity_summary.get("summaryDTO", {}).get("startTimeGMT", "")
@@ -486,13 +627,19 @@ if __name__ == "__main__":
         print("[main] Cannot proceed without CN client. Exiting.")
         sys.exit(1)
 
-    # Step 2: Get existing activity timestamps from Garmin CN
+    # Step 2: Get CN latest activity start time (for time-window filtering)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+    cn_latest_start_time = loop.run_until_complete(
+        get_cn_latest_start_time(garmin_cn_client)
+    )
+    print(f"CN latest activity start time: {cn_latest_start_time or 'None'}")
+
+    # Step 3: Get existing activity timestamps from Garmin CN (for dedup by time+distance)
     cn_existing_timestamps = loop.run_until_complete(
         get_cn_existing_timestamps(garmin_cn_client)
     )
-    print(f"Garmin CN already has {len(cn_existing_timestamps)} activities")
+    print(f"Garmin CN already has {len(cn_existing_timestamps)} activities (for dedup)")
 
     # Step 3: Login to Garmin COM and download new activities
     garmin_com_client = None
@@ -516,6 +663,7 @@ if __name__ == "__main__":
             folder,
             "fit",
             max_activities=max_activities,
+            since_start_time=cn_latest_start_time,
         )
     )
     loop.run_until_complete(future)
