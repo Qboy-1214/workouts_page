@@ -48,7 +48,8 @@ jobs:
       - name: Lint with Ruff
         run: |
           pip install 'ruff==0.9.0'
-          ruff check . --output-format=text
+          # Use github output format for inline annotations in the checks view
+          ruff check . --target-version py312 --output-format=github
 
   node_lint_and_test:
     runs-on: ubuntu-latest
