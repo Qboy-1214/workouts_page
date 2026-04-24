@@ -18,7 +18,7 @@ import sys
 import time
 from datetime import datetime
 
-from config import FIT_FOLDER, GPX_FOLDER, JSON_FILE, SQL_FILE
+from config import FIT_FOLDER, GPX_FOLDER, TCX_FOLDER, JSON_FILE, SQL_FILE
 from garmin_sync import Garmin, restore_or_login, get_activity_id_list
 from garmin_sync import (
     download_garmin_data,
@@ -853,7 +853,7 @@ if __name__ == "__main__":
             cn_existing_timestamps,
             is_only_running,
             folder,
-            "fit",
+            "tcx",  # Use TCX format for reliable time extraction from <Id> field
             max_activities=max_activities,
             since_start_time=cn_latest_start_time,
         )
@@ -865,7 +865,7 @@ if __name__ == "__main__":
     to_upload_files = []
     for i in new_ids:
         fit_path = os.path.join(FIT_FOLDER, f"{i}.fit")
-        tcx_path = os.path.join(FIT_FOLDER, f"{i}.tcx")
+        tcx_path = os.path.join(TCX_FOLDER, f"{i}.tcx")  # Fixed: was using FIT_FOLDER
         gpx_path = os.path.join(GPX_FOLDER, f"{i}.gpx")
         if os.path.exists(fit_path):
             file_size = os.path.getsize(fit_path)
