@@ -26,7 +26,7 @@ from lxml import etree
 
 # Import garth for CN authentication fallback
 try:
-    from garmin_cn_garth import GarminCngarthClient, create_garth_cn_client
+    from garmin_cn_garth import create_garth_cn_client
 
     GARTH_CN_AVAILABLE = True
 except ImportError:

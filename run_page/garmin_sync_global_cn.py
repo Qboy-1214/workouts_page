@@ -449,7 +449,6 @@ async def upload_activities_to_garmin_cn(
             cn_type_key = map_com_type_to_cn(com_type_key)
 
             # Find the newly uploaded activity in CN by start time
-            start_time = None
             if com_id in id2title:
                 # Get start time from garmin_summary_infos if available
                 # For simplicity, search by activity name pattern (recent uploads first)
