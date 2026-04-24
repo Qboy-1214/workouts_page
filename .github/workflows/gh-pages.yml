@@ -23,6 +23,11 @@ on:
         type: string
         default: track_data
 
+# Global configuration to show all console output
+defaults:
+  run:
+    shell: bash -l
+
 # Allow one concurrent deployment
 concurrency:
   group: 'pages'
