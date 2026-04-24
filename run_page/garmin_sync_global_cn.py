@@ -16,17 +16,17 @@ import os
 import re
 import sys
 import time
-from datetime import datetime
 
-from config import FIT_FOLDER, GPX_FOLDER, TCX_FOLDER, JSON_FILE, SQL_FILE
-from garmin_sync import Garmin, restore_or_login, get_activity_id_list
-from garmin_sync import (
-    download_garmin_data,
-    get_garmin_summary_infos,
-    gather_with_concurrency,
-)
-from utils import make_activities_file
 from activity_type_map import map_com_type_to_cn
+from config import FIT_FOLDER, GPX_FOLDER, TCX_FOLDER
+from garmin_sync import (
+    Garmin,
+    download_garmin_data,
+    gather_with_concurrency,
+    get_activity_id_list,
+    get_garmin_summary_infos,
+    restore_or_login,
+)
 
 
 async def get_cn_latest_start_time(cn_client):
@@ -324,10 +324,9 @@ async def _search_cn_activity_by_start_time(
     Returns:
         Tuple of (activityId, current_name, current_type) if found, else (None, None, None)
     """
-    import time as time_module
-
     # Parse the target start time
     import datetime as dt
+    import time as time_module
 
     try:
         target_dt = dt.datetime.fromisoformat(start_time_iso.replace("Z", "+00:00"))
@@ -353,7 +352,7 @@ async def _search_cn_activity_by_start_time(
             # Debug: show the first few CN activity times we're searching
             if attempt == 0 and page_size == 50:
                 print(f"  [search] Target time: {start_time_iso}")
-                print(f"  [search] First 3 CN activity times:")
+                print("  [search] First 3 CN activity times:")
                 for i, act in enumerate(cn_activities[:3]):
                     raw_time = act.get("startTimeGMT", "N/A")
                     norm_time = (
@@ -735,7 +734,7 @@ if __name__ == "__main__":
     try:
         print("[main] Logging in to Garmin CN...")
         garmin_cn_client = restore_or_login(cn_username, cn_password, "CN")
-        print(f"[main] Garmin CN login successful")
+        print("[main] Garmin CN login successful")
     except Exception as err:
         print(f"[main] Garmin CN login failed: {err}")
         garmin_cn_client = None
@@ -757,7 +756,7 @@ if __name__ == "__main__":
     try:
         print("[main] Logging in to Garmin COM (International)...")
         garmin_com_client = restore_or_login(com_username, com_password, "COM")
-        print(f"[main] Garmin COM login successful")
+        print("[main] Garmin COM login successful")
     except Exception as err:
         print(f"[main] Garmin COM login failed: {err}")
         garmin_com_client = None

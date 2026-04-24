@@ -1,11 +1,12 @@
 import argparse
-from openai import OpenAI
-from config import SQL_FILE, PNG_FOLDER
-from generator import Generator
-import polyline
 import base64
 import os
+
 import cairosvg  # 替换 svglib.svglib 和 reportlab.graphics
+import polyline
+from config import PNG_FOLDER, SQL_FILE
+from generator import Generator
+from openai import OpenAI
 
 SVG_WIDTH = 800
 SVG_HEIGHT = 600

@@ -11,18 +11,18 @@ from xml.dom import minidom
 import gpxpy
 import polyline
 import requests
-from tzlocal import get_localzone
-
 from config import (
     GPX_FOLDER,
     JSON_FILE,
     SQL_FILE,
-    run_map,
-    start_point,
     TCX_FOLDER,
     UTC_TIMEZONE,
+    run_map,
+    start_point,
 )
 from generator import Generator
+from tzlocal import get_localzone
+
 from utils import adjust_time
 
 TOKEN_REFRESH_URL = "https://sport.health.heytapmobi.com/open/v1/oauth/token"

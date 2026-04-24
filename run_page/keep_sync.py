@@ -3,10 +3,12 @@ import base64
 import json
 import os
 import time
+import xml.etree.ElementTree as ET
 import zlib
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
 from xml.dom import minidom
+
 import eviltransform
 import gpxpy
 import polyline
@@ -21,8 +23,8 @@ from config import (
 )
 from Crypto.Cipher import AES
 from generator import Generator
+
 from utils import adjust_time
-import xml.etree.ElementTree as ET
 
 KEEP_SPORT_TYPES = ["running", "hiking", "cycling"]
 KEEP2STRAVA = {

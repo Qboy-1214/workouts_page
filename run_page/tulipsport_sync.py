@@ -4,12 +4,14 @@ import os
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
+from xml.etree import ElementTree
+
 import gpxpy
 import polyline
 import requests
 from config import GPX_FOLDER, JSON_FILE, SQL_FILE, run_map, start_point
 from generator import Generator
-from xml.etree import ElementTree
+
 from utils import adjust_time_to_utc
 
 # need to test

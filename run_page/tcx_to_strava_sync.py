@@ -4,10 +4,10 @@ import time
 
 from config import TCX_FOLDER
 from strava_sync import run_strava_sync
-from stravalib.exc import RateLimitTimeout, ActivityUploadFailed
+from stravalib.exc import ActivityUploadFailed, RateLimitTimeout
 from tcxreader.tcxreader import TCXReader
 
-from utils import make_strava_client, get_strava_last_time, upload_file_to_strava
+from utils import get_strava_last_time, make_strava_client, upload_file_to_strava
 
 
 def get_to_generate_files(last_time):

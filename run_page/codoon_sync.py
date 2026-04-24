@@ -10,6 +10,7 @@ import xml.etree.ElementTree as ET
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
 from xml.dom import minidom
+
 import eviltransform
 import gpxpy
 import numpy as np
@@ -26,6 +27,7 @@ from config import (
 )
 from generator import Generator
 from tzlocal import get_localzone
+
 from utils import adjust_time_to_utc, adjust_timestamp_to_utc, to_date
 
 # struct body

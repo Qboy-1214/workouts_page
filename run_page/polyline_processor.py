@@ -1,7 +1,8 @@
-from typing import List, Tuple
-import polyline
 import os
 import warnings
+from typing import List, Tuple
+
+import polyline
 from haversine import haversine
 
 # Initialize IGNORE_POLYLINE with graceful error handling

@@ -6,8 +6,9 @@ import sys
 # Add parent directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import FIT_FOLDER, GPX_FOLDER
 import glob
+
+from config import FIT_FOLDER
 
 # Find recently modified .fit files
 recent_files = glob.glob(os.path.join(FIT_FOLDER, "*.fit"))

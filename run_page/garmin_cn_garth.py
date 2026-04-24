@@ -15,7 +15,7 @@ This gives us reliable CN authentication with full API support.
 """
 
 import warnings
-from typing import Any, Optional
+from typing import Optional
 
 # Suppress garth deprecation warning
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -274,7 +274,7 @@ class GarminCngarthClient:
                 result = self._garth_client.upload(f)
             print(f"[GarminCngarthClient] Upload result: {result}")
             return result
-        except GarthHTTPError as e:
+        except GarthHTTPError:
             # Re-raise GarthHTTPError so it can be caught by caller
             raise
         except Exception as e:

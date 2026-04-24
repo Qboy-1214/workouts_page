@@ -2,14 +2,15 @@
 # https://github.com/timschneeb/KomootGPX.git
 # great thanks
 
+import argparse
+import base64
 import os
 import re
 import sys
-import argparse
-import base64
-import requests
 from datetime import datetime, timedelta
+
 import gpxpy.gpx
+import requests
 from config import GPX_FOLDER
 
 

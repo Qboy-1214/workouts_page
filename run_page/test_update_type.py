@@ -6,8 +6,8 @@ import sys
 
 sys.path.insert(0, "run_page")
 
-from garmin_cn_garth import GarminCngarthClient
 from dotenv import load_dotenv
+from garmin_cn_garth import GarminCngarthClient
 
 load_dotenv(".temp_garmin.env")
 
@@ -33,7 +33,7 @@ async def main():
         print(f"Error fetching: {e}")
 
     # Try to update the type
-    print(f"\nUpdating type to soccer (id=40, parent=28)...")
+    print("\nUpdating type to soccer (id=40, parent=28)...")
     try:
         path = f"/activity-service/activity/{act_id}"
         payload = {

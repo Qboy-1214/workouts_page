@@ -7,13 +7,14 @@ import subprocess
 import sys
 import time
 import warnings
+import xml.etree.ElementTree as ET
 from collections import namedtuple
 from datetime import datetime, timedelta, timezone
-from xml.dom import minidom
 from hashlib import md5
 from typing import List
 from urllib.parse import quote
-import xml.etree.ElementTree as ET
+from xml.dom import minidom
+
 import gpxpy
 import numpy as np
 import polyline
@@ -28,6 +29,7 @@ from config import (
     start_point,
 )
 from generator import Generator
+
 from utils import adjust_time
 
 # struct body

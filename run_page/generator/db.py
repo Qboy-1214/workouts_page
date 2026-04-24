@@ -3,7 +3,7 @@ import random
 import string
 
 from config import TYPE_DICT
-from geopy.geocoders import options, Nominatim
+from geopy.geocoders import Nominatim, options
 from sqlalchemy import (
     Column,
     Float,

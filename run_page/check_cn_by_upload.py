@@ -6,9 +6,9 @@ import sys
 
 sys.path.insert(0, "run_page")
 
+from dotenv import load_dotenv
 from garmin_cn_garth import GarminCngarthClient
 from garmin_sync import Garmin
-from dotenv import load_dotenv
 
 load_dotenv(".temp_garmin.env")
 

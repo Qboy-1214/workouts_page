@@ -4,14 +4,15 @@ import os
 import sys
 from datetime import datetime
 
+import requests as _req
 from garmin_sync import Garmin, restore_or_login
 from strava_sync import run_strava_sync
 from stravaweblib import DataFormat, WebClient
-from utils import make_strava_client
 
 # Direct access to stravaweblib internals for cookie-based session
 from stravaweblib.webclient import BASE_URL
-import requests as _req
+
+from utils import make_strava_client
 
 
 async def upload_to_activities(

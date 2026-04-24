@@ -11,8 +11,6 @@ import argparse
 import asyncio
 import os
 import sys
-import time
-import json
 from datetime import datetime
 
 # Add project to path
@@ -20,9 +18,9 @@ current = os.path.dirname(os.path.realpath(__file__))
 parent = os.path.dirname(current)
 sys.path.insert(0, current)
 
-from garmin_sync import Garmin, restore_or_login, GARTH_CN_AVAILABLE
-from config import FIT_FOLDER, GPX_FOLDER
 from activity_type_map import map_com_type_to_cn
+from config import FIT_FOLDER
+from garmin_sync import Garmin, restore_or_login
 
 
 async def get_com_activities_with_details(com_client, limit=10):
@@ -297,7 +295,7 @@ async def upload_to_garmin_cn(cn_client, activity_data):
     except Exception as upload_err:
         err_str = str(upload_err)
         if "409" in err_str or "Conflict" in err_str:
-            print(f"  Activity already exists (409 Conflict)")
+            print("  Activity already exists (409 Conflict)")
             return True
         else:
             print(f"  Upload failed: {upload_err}")

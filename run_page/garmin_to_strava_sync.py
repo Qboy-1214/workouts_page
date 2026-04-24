@@ -17,6 +17,7 @@ from garmin_sync import (
     restore_or_login,
 )
 from strava_sync import run_strava_sync
+
 from utils import make_strava_client, upload_file_to_strava
 
 if __name__ == "__main__":

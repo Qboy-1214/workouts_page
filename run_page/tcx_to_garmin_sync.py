@@ -4,10 +4,9 @@ import os
 import sys
 from datetime import datetime
 
-from tcxreader.tcxreader import TCXReader
-
 from config import TCX_FOLDER
 from garmin_sync import Garmin, restore_or_login
+from tcxreader.tcxreader import TCXReader
 
 
 def get_to_generate_files(last_time):

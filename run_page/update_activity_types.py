@@ -11,9 +11,9 @@ from datetime import datetime
 current = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, current)
 
-from garmin_sync import restore_or_login, Garmin
-from garmin_cn_garth import GarminCngarthClient
 from activity_type_map import map_com_type_to_cn
+from garmin_cn_garth import GarminCngarthClient
+from garmin_sync import Garmin, restore_or_login
 
 
 async def main():
@@ -150,7 +150,7 @@ async def main():
                             else:
                                 print(f'    -> CN type "{cn_type_key}" not found')
                         else:
-                            print(f"    -> Already correct")
+                            print("    -> Already correct")
                         found = True
                         break
 

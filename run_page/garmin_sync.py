@@ -8,21 +8,21 @@ import asyncio
 import datetime as dt
 import logging
 import os
-import pickle
 import sys
 import time
 import traceback
 import zipfile
 
-from lxml import etree
-
 import aiofiles
 from garminconnect import (
     Garmin as GarminConnectLib,
+)
+from garminconnect import (
     GarminConnectAuthenticationError,
     GarminConnectConnectionError,
     GarminConnectTooManyRequestsError,
 )
+from lxml import etree
 
 # Import garth for CN authentication fallback
 try:
@@ -34,6 +34,7 @@ except ImportError:
     print("[restore_or_login] Warning: garth not available for CN fallback")
 from config import FOLDER_DICT, JSON_FILE, SQL_FILE
 from garmin_device_adaptor import process_garmin_data
+
 from utils import make_activities_file_only
 
 # logging.basicConfig(level=logging.DEBUG)
@@ -942,7 +943,7 @@ def restore_or_login(username, password, auth_domain):
 
     # For CN, try garth first (more reliable for garmin.cn)
     if is_cn and GARTH_CN_AVAILABLE:
-        print(f"[restore_or_login] Attempting CN login with garth library...")
+        print("[restore_or_login] Attempting CN login with garth library...")
         try:
             garth_client = create_garth_cn_client(username, password)
             print(f"[restore_or_login] CN login successful via garth for {auth_domain}")

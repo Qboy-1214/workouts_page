@@ -6,9 +6,9 @@
 # license that can be found in the LICENSE file.
 
 import datetime
-from datetime import timezone
 import os
 from collections import namedtuple
+from datetime import timezone
 
 import gpxpy as mod_gpxpy
 import lxml
@@ -21,7 +21,7 @@ from rich import print
 from tcxreader.tcxreader import TCXReader
 
 from .exceptions import TrackLoadError
-from .utils import parse_datetime_to_local, get_normalized_sport_type
+from .utils import get_normalized_sport_type, parse_datetime_to_local
 
 start_point = namedtuple("start_point", "lat lon")
 run_map = namedtuple("polyline", "summary_polyline")

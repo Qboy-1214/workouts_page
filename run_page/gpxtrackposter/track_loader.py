@@ -14,12 +14,11 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import concurrent.futures
 
 from generator.db import Activity, init_db
+from synced_data_file_logger import load_synced_file_list
 
 from .exceptions import ParameterError, TrackLoadError
 from .track import Track
 from .year_range import YearRange
-
-from synced_data_file_logger import load_synced_file_list
 
 log = logging.getLogger(__name__)
 

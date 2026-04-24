@@ -11,9 +11,9 @@ from datetime import datetime
 current = os.path.dirname(os.path.realpath(__file__))
 sys.path.insert(0, current)
 
-from garmin_sync import restore_or_login, Garmin
-from garmin_cn_garth import GarminCngarthClient
 from activity_type_map import map_com_type_to_cn
+from garmin_cn_garth import GarminCngarthClient
+from garmin_sync import Garmin, restore_or_login
 
 
 async def main():
@@ -163,7 +163,7 @@ async def main():
         await asyncio.sleep(0.3)  # Rate limit
 
     print()
-    print(f"Results:")
+    print("Results:")
     print(f"  Updated: {updated}")
     print(f"  Skipped (not in target types or mapped to other): {skipped}")
     print(f"  Not found in CN: {not_found}")

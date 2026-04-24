@@ -8,9 +8,9 @@ from gpxtrackposter import (
     circular_drawer,
     github_drawer,
     grid_drawer,
+    month_of_life_drawer,
     poster,
     track_loader,
-    month_of_life_drawer,
     year_summary_drawer,
 )
 from gpxtrackposter.exceptions import ParameterError, PosterError
