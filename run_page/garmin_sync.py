@@ -915,10 +915,14 @@ def _parse_garmin_timestamp(raw: str) -> dt.datetime:
         pass
 
     # Fallback: regex-based extraction of Y-M-D H:M:S components
-    m = _re.match(r"(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{1,2}):(\d{1,2})", normalized)
+    m = _re.match(
+        r"(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{1,2}):(\d{1,2})", normalized
+    )
     if m:
         year, month, day, hour, minute, second = map(int, m.groups())
-        return dt.datetime(year, month, day, hour, minute, second, tzinfo=dt.timezone.utc)
+        return dt.datetime(
+            year, month, day, hour, minute, second, tzinfo=dt.timezone.utc
+        )
     raise ValueError(f"Cannot parse timestamp: {raw}")
 
 
