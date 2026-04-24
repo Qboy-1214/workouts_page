@@ -154,9 +154,7 @@ async def get_cn_existing_timestamps(cn_client):
                 if normalized_time not in cn_ts_dict:
                     cn_ts_dict[normalized_time] = []
                 cn_ts_dict[normalized_time].append((distance, act.get("activityId")))
-        print(
-            f"[DEBUG] CN activities: fetched {len(activities)} (total: {total_fetched}), unique timestamps: {len(cn_ts_dict)}"
-        )
+        
         if len(activities) < limit:
             break
         start += limit
@@ -522,11 +520,8 @@ async def upload_activities_to_garmin_cn(
                 print(f"  [update] Could not parse activity ID from {filename}")
                 continue
 
-            # DEBUG: log id2title keys and com_id_str
-            print(f"  [update] DEBUG: com_id_str={com_id_str!r}, id2title keys sample={list(id2title.keys())[:3]}")
             activity_name = id2title.get(com_id_str, "")
             com_type_key = id2type.get(com_id_str, "")
-            print(f"  [update] DEBUG: activity_name={activity_name!r}, com_type_key={com_type_key!r}")
             cn_type_key = map_com_type_to_cn(com_type_key)
 
             # Find the newly uploaded activity in CN by start time
