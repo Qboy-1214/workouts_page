@@ -385,28 +385,41 @@ async def download_with_cn_filter(
 
 
 async def _search_cn_activity_by_start_time(
-    garmin_cn_wrapper, start_time_iso, max_retries=3, retry_delay=5
+    garmin_cn_wrapper, start_time_iso, max_retries=3, retry_delay=5, time_tolerance_seconds=180
 ):
-    """Search CN for an activity by start time, with retry logic.
+    """Search CN for an activity by start time, with retry logic and fuzzy time matching.
 
     Newly uploaded activities may not appear in get_activities() immediately.
     Garmin's servers need processing time to index them.
+
+    Uses fuzzy matching with configurable tolerance (±3 minutes by default) to handle
+    minor time differences between COM and CN platforms.
 
     Args:
         garmin_cn_wrapper: Garmin CN wrapper instance
         start_time_iso: ISO timestamp string to match (YYYY-MM-DDTHH:MM:SS)
         max_retries: Number of retry attempts (default: 3)
         retry_delay: Seconds to wait between retries (default: 5)
+        time_tolerance_seconds: Time tolerance for matching in seconds (default: 180 = ±3 minutes)
 
     Returns:
         Tuple of (activityId, current_name, current_type) if found, else (None, None, None)
     """
     import time as time_module
 
+    # Parse the target start time
+    import datetime as dt
+
+    try:
+        target_dt = dt.datetime.fromisoformat(start_time_iso.replace("Z", "+00:00"))
+    except ValueError:
+        print(f"  [search] Could not parse target time: {start_time_iso}")
+        return None, None, None
+
     for attempt in range(max_retries):
         if attempt > 0:
             print(
-                f"  [retry] Attempt {attempt}/{max_retries-1}: re-searching for start time {start_time_iso}..."
+                f"  [retry] Attempt {attempt}/{max_retries-1}: re-searching for start time around {start_time_iso} (tolerance: ±{time_tolerance_seconds}s)..."
             )
             time_module.sleep(retry_delay)
 
@@ -427,31 +440,53 @@ async def _search_cn_activity_by_start_time(
                         .split("+")[0]
                         .split("Z")[0]
                     )
-                    if act_start_norm == start_time_iso:
-                        found_id = act.get("activityId")
-                        current_name = act.get("activityName", "")
-                        current_type = act.get("activityType", {}).get(
-                            "typeKey", ""
-                        ) or act.get("activityType", {}).get("typeGui", "")
-                        if attempt > 0:
-                            print(
-                                f"  [retry] Found on attempt {attempt}: CN activity {found_id} for start {start_time_iso}"
-                            )
-                        return found_id, current_name, current_type
+                    try:
+                        act_dt = dt.datetime.fromisoformat(act_start_norm.replace("Z", "+00:00"))
+                        time_diff = abs((act_dt - target_dt).total_seconds())
+                        if time_diff <= time_tolerance_seconds:
+                            found_id = act.get("activityId")
+                            current_name = act.get("activityName", "")
+                            current_type = act.get("activityType", {}).get(
+                                "typeKey", ""
+                            ) or act.get("activityType", {}).get("typeGui", "")
+                            if attempt > 0:
+                                print(
+                                    f"  [retry] Found on attempt {attempt}: CN activity {found_id} for start {start_time_iso} (diff: {time_diff:.1f}s)"
+                                )
+                            elif time_diff > 0:
+                                print(
+                                    f"  [match] Fuzzy match: CN activity {found_id}, time diff: {time_diff:.1f}s (tolerance: ±{time_tolerance_seconds}s)"
+                                )
+                            return found_id, current_name, current_type
+                    except ValueError:
+                        # Fallback to exact match if parsing fails
+                        if act_start_norm == start_time_iso:
+                            found_id = act.get("activityId")
+                            current_name = act.get("activityName", "")
+                            current_type = act.get("activityType", {}).get(
+                                "typeKey", ""
+                            ) or act.get("activityType", {}).get("typeGui", "")
+                            if attempt > 0:
+                                print(
+                                    f"  [retry] Found on attempt {attempt} (exact match): CN activity {found_id} for start {start_time_iso}"
+                                )
+                            return found_id, current_name, current_type
 
     return None, None, None
 
 
 async def upload_activities_to_garmin_cn(
-    garmin_cn_wrapper, files, id2title, id2type, id2start_time=None
+    garmin_cn_wrapper, files, id2title, id2type, id2start_time=None, time_tolerance=180
 ):
-    """Upload activities to Garmin CN and update name/type (match by start time).
+    """Upload activities to Garmin CN and update name/type (match by start time with fuzzy matching).
 
     Args:
         garmin_cn_wrapper: Garmin CN wrapper instance
         files: List of file paths to upload
         id2title: Dict mapping COM activity ID -> activity name
         id2type: Dict mapping COM activity ID -> activity type key
+        id2start_time: Dict mapping COM activity ID -> start time (optional fallback)
+        time_tolerance: Time tolerance in seconds for matching activities (default: 180 = ±3 minutes)
     """
     print(
         f"[upload_activities_to_garmin_cn] Starting upload to Garmin CN, auth domain: {garmin_cn_wrapper.auth_domain}"
@@ -504,10 +539,14 @@ async def upload_activities_to_garmin_cn(
                 )
                 continue
 
-            # Search CN activities with retry (newly uploaded activities need time to be indexed)
+            # Search CN activities with retry and fuzzy time matching
             found_cn_id, current_cn_name, current_cn_type = (
                 await _search_cn_activity_by_start_time(
-                    garmin_cn_wrapper, start_time_iso, max_retries=3, retry_delay=5
+                    garmin_cn_wrapper,
+                    start_time_iso,
+                    max_retries=3,
+                    retry_delay=5,
+                    time_tolerance_seconds=time_tolerance,
                 )
             )
 
@@ -716,10 +755,18 @@ if __name__ == "__main__":
         default=10000,
         help="maximum number of activities to sync (default: 10000, set to 0 for unlimited)",
     )
+    parser.add_argument(
+        "--time-tolerance",
+        dest="time_tolerance",
+        type=int,
+        default=180,
+        help="time tolerance in seconds for matching activities (default: 180 = ±3 minutes)",
+    )
 
     options = parser.parse_args()
     is_only_running = options.only_run
     max_activities = options.max_activities
+    time_tolerance = options.time_tolerance
 
     # Priority: environment variables > command line args (same as strava_to_garmin_sync.py)
     cn_username = os.getenv("GARMIN_CN_USERNAME") or options.cn_username
@@ -841,7 +888,12 @@ if __name__ == "__main__":
         try:
             future = asyncio.ensure_future(
                 upload_activities_to_garmin_cn(
-                    garmin_cn_wrapper, to_upload_files, id2title, id2type, id2start_time
+                    garmin_cn_wrapper,
+                    to_upload_files,
+                    id2title,
+                    id2type,
+                    id2start_time,
+                    time_tolerance=time_tolerance,
                 )
             )
             loop.run_until_complete(future)
