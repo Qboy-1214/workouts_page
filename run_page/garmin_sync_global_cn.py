@@ -436,7 +436,9 @@ async def _search_cn_activity_by_start_time(
                 print(f"  [search] Target time: {start_time_iso}")
                 print(f"  [search] First 3 CN activity times:")
                 for i, act in enumerate(cn_activities[:3]):
-                    print(f"    [{i}] {act.get('startTimeGMT', 'N/A')} -> norm: {re.sub(r'\.\d+(.*?)$', '', act.get('startTimeGMT', '')).split('+')[0].split('Z')[0]}")
+                    raw_time = act.get('startTimeGMT', 'N/A')
+                    norm_time = re.sub(r'\.\d+(.*?)$', '', raw_time).split('+')[0].split('Z')[0]
+                    print(f"    [{i}] {raw_time} -> norm: {norm_time}")
 
             for act in cn_activities:
                 act_start = act.get("startTimeGMT", "")
