@@ -39,9 +39,7 @@ class YearSummaryDrawer(TracksDrawer):
         dim_color = "#555555"
 
         # Filter tracks for the specified year
-        year_tracks = [
-            t for t in self.poster.tracks if t.start_time_local.year == self.year
-        ]
+        year_tracks = [t for t in self.poster.tracks if t.start_time_local.year == self.year]
 
         # Calculate statistics
         stats = self._calculate_stats(year_tracks)
@@ -284,9 +282,7 @@ class YearSummaryDrawer(TracksDrawer):
                 else:
                     total_time_s += float(moving_time)
             elif t.end_time and t.start_time:
-                if isinstance(t.end_time, datetime.datetime) and isinstance(
-                    t.start_time, datetime.datetime
-                ):
+                if isinstance(t.end_time, datetime.datetime) and isinstance(t.start_time, datetime.datetime):
                     total_time_s += (t.end_time - t.start_time).total_seconds()
 
         stats["total_distance"] = self.poster.m2u(total_distance_m)
@@ -392,9 +388,7 @@ class YearSummaryDrawer(TracksDrawer):
                     else:
                         # Interpolate between dim and track color based on distance
                         intensity = min(dist / special_distance, 1.0)
-                        color = self._interpolate_color(
-                            dim_color, track_color, intensity
-                        )
+                        color = self._interpolate_color(dim_color, track_color, intensity)
                 else:
                     # No activity - dim dot
                     color = dim_color

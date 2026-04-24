@@ -12,16 +12,12 @@ from config import FIT_FOLDER
 
 # Find recently modified .fit files
 recent_files = glob.glob(os.path.join(FIT_FOLDER, "*.fit"))
-recent_files = [
-    f for f in recent_files if os.path.getsize(f) > 10000
-]  # Filter tiny files
+recent_files = [f for f in recent_files if os.path.getsize(f) > 10000]  # Filter tiny files
 recent_files.sort(key=os.path.getmtime, reverse=True)
 
 print(f"Found {len(recent_files)} .fit files in {FIT_FOLDER}")
 for f in recent_files[:10]:
-    print(
-        f"  {os.path.basename(f)} - {os.path.getsize(f)} bytes - {os.path.getmtime(f)}"
-    )
+    print(f"  {os.path.basename(f)} - {os.path.getsize(f)} bytes - {os.path.getmtime(f)}")
 
 # Select 3 files to test upload
 test_files = recent_files[:3]

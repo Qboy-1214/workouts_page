@@ -24,9 +24,7 @@ class Onelap:
     def login(self):
         nonce = uuid.uuid4().hex[:16]
         timestamp = str(int(time.time()))
-        sign = hashlib.md5(
-            f"account={self.account}&nonce={nonce}&***".encode()
-        ).hexdigest()
+        sign = hashlib.md5(f"account={self.account}&nonce={nonce}&***".encode()).hexdigest()
         headers = {"nonce": nonce, "timestamp": timestamp, "sign": sign}
 
         try:

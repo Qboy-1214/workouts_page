@@ -1,8 +1,8 @@
 """Run garmin sync with credentials from temp file"""
 
 import os
-import sys
 import subprocess
+import sys
 
 # Read .env file and set environment variables
 env_file = os.path.join(os.path.dirname(__file__), ".temp_garmin.env")

@@ -17,16 +17,11 @@ def get_to_generate_files(last_time):
     """
     file_names = os.listdir(TCX_FOLDER)
     tcx = TCXReader()
-    tcx_files = [
-        (tcx.read(os.path.join(TCX_FOLDER, i)), os.path.join(TCX_FOLDER, i))
-        for i in file_names
-        if i.endswith(".tcx")
-    ]
+    tcx_files = [(tcx.read(os.path.join(TCX_FOLDER, i)), os.path.join(TCX_FOLDER, i)) for i in file_names if i.endswith(".tcx")]
     tcx_files_dict = {
         int(i[0].trackpoints[0].time.timestamp()): i[1]
         for i in tcx_files
-        if len(i[0].trackpoints) > 0
-        and int(i[0].trackpoints[0].time.timestamp()) > last_time
+        if len(i[0].trackpoints) > 0 and int(i[0].trackpoints[0].time.timestamp()) > last_time
     }
 
     return sorted(list(tcx_files_dict.keys())), tcx_files_dict
@@ -48,9 +43,7 @@ if __name__ == "__main__":
     options = parser.parse_args()
     # upload new tcx to strava
     print("Need to load all tcx files maybe take some time")
-    client = make_strava_client(
-        options.client_id, options.client_secret, options.strava_refresh_token
-    )
+    client = make_strava_client(options.client_id, options.client_secret, options.strava_refresh_token)
     last_time = 0
     if not options.all:
         last_time = get_strava_last_time(client, is_milliseconds=False)
@@ -74,6 +67,4 @@ if __name__ == "__main__":
         time.sleep(1)
 
     time.sleep(10)
-    run_strava_sync(
-        options.client_id, options.client_secret, options.strava_refresh_token
-    )
+    run_strava_sync(options.client_id, options.client_secret, options.strava_refresh_token)

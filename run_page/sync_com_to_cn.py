@@ -151,9 +151,7 @@ async def download_activity_details(com_wrapper, activity_id, activity_info):
 
                 with zipfile.ZipFile(zip_path, "r") as zf:
                     for filename in zf.namelist():
-                        if filename.endswith(".tcx") or filename.lower().endswith(
-                            ".tcx"
-                        ):
+                        if filename.endswith(".tcx") or filename.lower().endswith(".tcx"):
                             zf.extract(filename, folder)
                             extracted = os.path.join(folder, filename)
                             print(f"    Extracted TCX: {filename}")
@@ -181,9 +179,7 @@ async def download_activity_details(com_wrapper, activity_id, activity_info):
         return None
 
     file_size = os.path.getsize(file_path)
-    print(
-        f"  Downloaded {activity_id} ({file_path.split('.')[-1]}) ({file_size} bytes)"
-    )
+    print(f"  Downloaded {activity_id} ({file_path.split('.')[-1]}) ({file_size} bytes)")
 
     return {
         "file_path": file_path,
@@ -207,9 +203,7 @@ async def upload_to_garmin_cn(cn_client, activity_data):
     # Map COM type to CN-compatible type
     cn_type_key = map_com_type_to_cn(com_type_key)
 
-    print(
-        f"  Processing {activity_id} in CN: name='{activity_name}', type='{com_type_key}' -> '{cn_type_key}'"
-    )
+    print(f"  Processing {activity_id} in CN: name='{activity_name}', type='{com_type_key}' -> '{cn_type_key}'")
 
     # First, try to find if this activity already exists in CN by start time
     start_time = activity_data.get("start_time", "")
@@ -234,9 +228,7 @@ async def upload_to_garmin_cn(cn_client, activity_data):
                         current_type = act.get("activityType", {}).get("typeKey", "")
 
                         print(f"  Found existing CN activity: {existing_cn_id}")
-                        print(
-                            f"    Current: name='{current_name}', type='{current_type}'"
-                        )
+                        print(f"    Current: name='{current_name}', type='{current_type}'")
 
                         # Update name if different
                         if activity_name and activity_name != current_name:
@@ -254,9 +246,7 @@ async def upload_to_garmin_cn(cn_client, activity_data):
                         if cn_type_key and cn_type_key != current_type:
                             try:
                                 # Get activity types for CN
-                                types = await asyncio.to_thread(
-                                    garmin_cn._client.get_activity_types
-                                )
+                                types = await asyncio.to_thread(garmin_cn._client.get_activity_types)
 
                                 # Find matching CN type
                                 type_id = None
@@ -277,9 +267,7 @@ async def upload_to_garmin_cn(cn_client, activity_data):
                                     )
                                     print(f"  Updated type to: {cn_type_key}")
                                 else:
-                                    print(
-                                        f"  CN type '{cn_type_key}' not found (may not be supported in CN)"
-                                    )
+                                    print(f"  CN type '{cn_type_key}' not found (may not be supported in CN)")
                             except Exception as type_err:
                                 print(f"  Could not update type: {type_err}")
 
@@ -314,15 +302,9 @@ async def gather_with_concurrency(n, *tasks):
 
 
 async def main():
-    parser = argparse.ArgumentParser(
-        description="Sync Garmin COM -> CN with activity name/type"
-    )
-    parser.add_argument(
-        "--com-username", dest="com_username", help="Garmin COM username"
-    )
-    parser.add_argument(
-        "--com-password", dest="com_password", help="Garmin COM password"
-    )
+    parser = argparse.ArgumentParser(description="Sync Garmin COM -> CN with activity name/type")
+    parser.add_argument("--com-username", dest="com_username", help="Garmin COM username")
+    parser.add_argument("--com-password", dest="com_password", help="Garmin COM password")
     parser.add_argument("--cn-username", dest="cn_username", help="Garmin CN username")
     parser.add_argument("--cn-password", dest="cn_password", help="Garmin CN password")
     parser.add_argument(

@@ -79,9 +79,7 @@ async def main():
 
         # Check if mapped to 'other' when it shouldn't
         if cn_type_key == "other" and com_type not in ("other", "fitness_equipment"):
-            print(
-                f"  [{act_id}] {act_name}: {com_type} -> CN: {cn_type_key} (not in CN, skipping)"
-            )
+            print(f"  [{act_id}] {act_name}: {com_type} -> CN: {cn_type_key} (not in CN, skipping)")
             skipped += 1
             continue
 
@@ -105,21 +103,15 @@ async def main():
                     cn_start = cn_act.get("startTimeGMT", "")
                     if cn_start and date_str in str(cn_start):
                         cn_act_id = cn_act.get("activityId")
-                        cn_current_type = cn_act.get("activityType", {}).get(
-                            "typeKey", ""
-                        )
+                        cn_current_type = cn_act.get("activityType", {}).get("typeKey", "")
                         cn_current_name = cn_act.get("activityName", "")
 
-                        print(
-                            f"  [{act_id}] {act_name}: CN current type = {cn_current_type}"
-                        )
+                        print(f"  [{act_id}] {act_name}: CN current type = {cn_current_type}")
 
                         # Update name if different
                         if act_name and act_name != cn_current_name:
                             try:
-                                await asyncio.to_thread(
-                                    cn_client.update_activity_name, cn_act_id, act_name
-                                )
+                                await asyncio.to_thread(cn_client.update_activity_name, cn_act_id, act_name)
                                 print(f"    -> Updated name to: {act_name}")
                             except Exception as name_err:
                                 print(f"    -> Could not update name: {name_err}")
@@ -128,11 +120,7 @@ async def main():
                         if cn_type_key != cn_current_type:
                             # Find CN type ID
                             type_info = next(
-                                (
-                                    t
-                                    for t in cn_types
-                                    if t.get("typeKey") == cn_type_key
-                                ),
+                                (t for t in cn_types if t.get("typeKey") == cn_type_key),
                                 None,
                             )
                             if type_info:

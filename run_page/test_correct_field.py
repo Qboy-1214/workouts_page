@@ -13,9 +13,7 @@ load_dotenv(".temp_garmin.env")
 
 
 async def main():
-    cn_client = GarminCngarthClient(
-        os.getenv("GARMIN_CN_USERNAME"), os.getenv("GARMIN_CN_PASSWORD"), is_cn=True
-    )
+    cn_client = GarminCngarthClient(os.getenv("GARMIN_CN_USERNAME"), os.getenv("GARMIN_CN_PASSWORD"), is_cn=True)
     cn_client.login()
     garth = cn_client._garth_client
 
@@ -34,9 +32,7 @@ async def main():
             "activityId": act_id,
             "activityTypeDTO": {"typeId": 40, "typeKey": "soccer", "parentTypeId": 28},
         }
-        result = garth.connectapi(
-            f"/activity-service/activity/{act_id}", method="PUT", json=payload
-        )
+        result = garth.connectapi(f"/activity-service/activity/{act_id}", method="PUT", json=payload)
         print(f"  Result: {result}")
     except Exception as e:
         print(f"  Error: {e}")

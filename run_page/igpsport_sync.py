@@ -111,9 +111,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("username", help="igpsport phone number")
     parser.add_argument("password", help="igpsport password")
-    parser.add_argument(
-        "--token", default="", help="from authorization token for download data"
-    )
+    parser.add_argument("--token", default="", help="from authorization token for download data")
     parser.add_argument(
         "--with-gpx",
         action="store_true",

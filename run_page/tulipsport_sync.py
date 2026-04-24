@@ -16,9 +16,7 @@ from utils import adjust_time_to_utc
 
 # need to test
 ACTIVITY_LIST_API = "https://open.tulipsport.com/api/v1/feeds4likes?start_time={start_time}&end_time={end_time}"
-ACTIVITY_DETAIL_API = (
-    "https://open.tulipsport.com/api/v1/feeddetail?activity_id={activity_id}"
-)
+ACTIVITY_DETAIL_API = "https://open.tulipsport.com/api/v1/feeddetail?activity_id={activity_id}"
 TULIPSPORT_FAKE_ID_PREFIX = "666"
 
 TIMEZONE_OFFSET = "+08:00"
@@ -33,9 +31,7 @@ def get_all_activity_summaries(session, headers, start_time=None):
     end_time_str = datetime.now(tz=DEFAULT_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
     result = []
     r = session.get(
-        ACTIVITY_LIST_API.format(
-            start_time=quote(start_time_str), end_time=quote(end_time_str)
-        ),
+        ACTIVITY_LIST_API.format(start_time=quote(start_time_str), end_time=quote(end_time_str)),
         headers=headers,
     )
     if r.ok:
@@ -45,9 +41,7 @@ def get_all_activity_summaries(session, headers, start_time=None):
             for summary in summary_list:
                 if summary["activity_type"] != "run":
                     continue
-                start_date_local = datetime.fromisoformat(
-                    summary["start_date_local"] + TIMEZONE_OFFSET
-                )
+                start_date_local = datetime.fromisoformat(summary["start_date_local"] + TIMEZONE_OFFSET)
                 start_date = adjust_time_to_utc(start_date_local, TIMEZONE_NAME)
                 moving_time = timedelta(seconds=int(summary["moving_time"]))
                 distance = float(summary["activity_distance"]) * 1000
@@ -75,9 +69,7 @@ def get_all_activity_summaries(session, headers, start_time=None):
 
 
 def get_activity_detail(session, headers, activity_id):
-    r = session.get(
-        ACTIVITY_DETAIL_API.format(activity_id=activity_id), headers=headers
-    )
+    r = session.get(ACTIVITY_DETAIL_API.format(activity_id=activity_id), headers=headers)
     if r.ok:
         return r.json()
 
@@ -87,9 +79,7 @@ def merge_summary_and_detail_to_nametuple(summary, detail):
     name = summary["name"]
     type = summary["type"]
     start_date = datetime.strftime(summary["start_date"], "%Y-%m-%d %H:%M:%S")
-    start_date_local = datetime.strftime(
-        summary["start_date_local"], "%Y-%m-%d %H:%M:%S"
-    )
+    start_date_local = datetime.strftime(summary["start_date_local"], "%Y-%m-%d %H:%M:%S")
     # end_date = datetime.strftime(summary["end_date"], "%Y-%m-%d %H:%M:%S")
     # end_date_local = datetime.strftime(summary["end_date_local"], "%Y-%m-%d %H:%M:%S")
     average_heartrate = int(detail["avg_hr"])
@@ -111,9 +101,7 @@ def merge_summary_and_detail_to_nametuple(summary, detail):
         start_latlng = start_point(float(first_point[0]), float(first_point[1]))
         if point_list_length > 1:
             last_point = point_list[-1]
-            elapsed_time = datetime.fromisoformat(
-                last_point[6]
-            ) - datetime.fromisoformat(first_point[6])
+            elapsed_time = datetime.fromisoformat(last_point[6]) - datetime.fromisoformat(first_point[6])
             latlng_list = [[float(point[0]), float(point[1])] for point in point_list]
             map = run_map(polyline.encode(latlng_list))
 
@@ -137,9 +125,7 @@ def merge_summary_and_detail_to_nametuple(summary, detail):
         "location_country": location_country,
         "subtype": "Run",
     }
-    return namedtuple("activity_db_instance", activity_db_instance.keys())(
-        *activity_db_instance.values()
-    )
+    return namedtuple("activity_db_instance", activity_db_instance.keys())(*activity_db_instance.values())
 
 
 def compute_elevation_gain(altitudes):
@@ -152,29 +138,19 @@ def compute_elevation_gain(altitudes):
 
 def find_last_tulipsport_start_time(track_ids):
     start_time = None
-    tulipsport_ids = [
-        id for id in track_ids if str(id).startswith(TULIPSPORT_FAKE_ID_PREFIX)
-    ]
+    tulipsport_ids = [id for id in track_ids if str(id).startswith(TULIPSPORT_FAKE_ID_PREFIX)]
     if tulipsport_ids:
         tulipsport_ids.sort()
         # 从模拟的构造 ID（特殊前缀 (666) + 活动开始时间的 timestamp + 活动距离 (单位：米，支持单次活动最大距离为 999,999 米)）中读取时间信息
-        start_time = datetime.fromtimestamp(
-            int(str(tulipsport_ids[-1])[3:-6]), DEFAULT_TIMEZONE
-        )
+        start_time = datetime.fromtimestamp(int(str(tulipsport_ids[-1])[3:-6]), DEFAULT_TIMEZONE)
     return start_time
 
 
 def get_new_activities(token, old_tracks_ids, with_gpx=False):
     s = requests.Session()
     headers = {"Authorization": token}
-    activity_summary_list = get_all_activity_summaries(
-        s, headers, find_last_tulipsport_start_time(old_tracks_ids)
-    )
-    activity_summary_list = [
-        activity
-        for activity in activity_summary_list
-        if activity["id"] not in old_tracks_ids
-    ]
+    activity_summary_list = get_all_activity_summaries(s, headers, find_last_tulipsport_start_time(old_tracks_ids))
+    activity_summary_list = [activity for activity in activity_summary_list if activity["id"] not in old_tracks_ids]
     print(f"{len(activity_summary_list)} new activities to generate")
     tracks = []
     if with_gpx and not os.path.exists(GPX_FOLDER):
@@ -186,9 +162,7 @@ def get_new_activities(token, old_tracks_ids, with_gpx=False):
         print(f"parsing activity id {activity_id}")
         try:
             activity_detail = get_activity_detail(s, headers, activity_id)
-            track = merge_summary_and_detail_to_nametuple(
-                activity_summary, activity_detail
-            )
+            track = merge_summary_and_detail_to_nametuple(activity_summary, activity_detail)
             tracks.append(track)
             if with_gpx and activity_summary["id"] not in old_gpx_ids:
                 save_activity_gpx(activity_summary, activity_detail, track)
@@ -215,9 +189,7 @@ def save_activity_gpx(summary, detail, track):
     point_list = detail["map_data_list"]
     last_section = ""
     avg_hr = int(detail["avg_hr"]) if detail.__contains__("avg_hr") else 0
-    avg_cadence = (
-        int(detail["avg_cadence"]) if detail.__contains__("avg_cadence") else 0
-    )
+    avg_cadence = int(detail["avg_cadence"]) if detail.__contains__("avg_cadence") else 0
     for point in point_list:
         cur_section = point[3]
         if last_section != cur_section:
@@ -228,9 +200,7 @@ def save_activity_gpx(summary, detail, track):
             latitude=float(point[0]),
             longitude=float(point[1]),
             elevation=float(point[2]),
-            time=adjust_time_to_utc(
-                datetime.fromisoformat(point[6] + TIMEZONE_OFFSET), TIMEZONE_NAME
-            ),
+            time=adjust_time_to_utc(datetime.fromisoformat(point[6] + TIMEZONE_OFFSET), TIMEZONE_NAME),
         )
         if avg_hr > 0 or avg_cadence > 0:
             extension_list = []
@@ -259,9 +229,7 @@ def save_activity_gpx(summary, detail, track):
 # 郁金香运动的活动 ID 采用 UUID 模式，而 DB 主键使用 long 类型，无法有效存储，所以采用构造个人唯一的活动 ID
 # 模拟构造 ID = 特殊前缀 + 活动开始时间的 timestamp + 活动距离（单位：米）
 def build_tulipsport_int_activity_id(activity):
-    timestamp_str = str(
-        int(datetime.fromisoformat(activity["start_date_local"] + "+08:00").timestamp())
-    )
+    timestamp_str = str(int(datetime.fromisoformat(activity["start_date_local"] + "+08:00").timestamp()))
     distance_str = f'{int(float(activity["activity_distance"]) * 1000):0>6}'
     return TULIPSPORT_FAKE_ID_PREFIX + timestamp_str + distance_str
 

@@ -40,15 +40,11 @@ def load_kml_data(track, k):
     }
     track.run_id = int(datetime.timestamp(track.start_time) * 1000)
     track.start_time_local, track.end_time_local = track.start_time, track.end_time
-    track.moving_dict["average_speed"] = track.moving_dict["distance"] / (
-        days * hours_per_day * 60 * 60
-    )
+    track.moving_dict["average_speed"] = track.moving_dict["distance"] / (days * hours_per_day * 60 * 60)
     polyline_container = get_points_from_kml(k)
     if IN_CHINA:
         # convert WGS-84 to GCJ-02
-        polyline_container = [
-            eviltransform.gcj2wgs(p[0], p[1]) for p in polyline_container
-        ]
+        polyline_container = [eviltransform.gcj2wgs(p[0], p[1]) for p in polyline_container]
 
     track.start_latlng = start_point(polyline_container[0][0], polyline_container[0][1])
     track.polyline_str = polyline.encode(polyline_container)

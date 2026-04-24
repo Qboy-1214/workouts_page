@@ -85,9 +85,7 @@ class Activity(Base):
 def update_or_create_activity(session, run_activity):
     created = False
     try:
-        activity = (
-            session.query(Activity).filter_by(run_id=int(run_activity.id)).first()
-        )
+        activity = session.query(Activity).filter_by(run_id=int(run_activity.id)).first()
         # In stravalib 2.x, activity.type is a pydantic model object (RelaxedActivityType).
         # Use .root attribute to get the actual string value for dict key lookup.
         activity_type_value = run_activity.type.root if run_activity.type else ""
@@ -99,29 +97,15 @@ def update_or_create_activity(session, run_activity):
         current_elevation_gain = 0.0  # default value
 
         # https://github.com/stravalib/stravalib/blob/main/src/stravalib/strava_model.py#L639C1-L643C41
-        if (
-            hasattr(run_activity, "total_elevation_gain")
-            and run_activity.total_elevation_gain is not None
-        ):
+        if hasattr(run_activity, "total_elevation_gain") and run_activity.total_elevation_gain is not None:
             current_elevation_gain = float(run_activity.total_elevation_gain)
-        elif (
-            hasattr(run_activity, "elevation_gain")
-            and run_activity.elevation_gain is not None
-        ):
+        elif hasattr(run_activity, "elevation_gain") and run_activity.elevation_gain is not None:
             current_elevation_gain = float(run_activity.elevation_gain)
 
         # In stravalib 2.x, moving_time and elapsed_time are Duration (int subclass).
         # Convert to datetime.timedelta using .timedelta() method.
-        moving_time = (
-            run_activity.moving_time.timedelta()
-            if hasattr(run_activity.moving_time, "timedelta")
-            else run_activity.moving_time
-        )
-        elapsed_time = (
-            run_activity.elapsed_time.timedelta()
-            if hasattr(run_activity.elapsed_time, "timedelta")
-            else run_activity.elapsed_time
-        )
+        moving_time = run_activity.moving_time.timedelta() if hasattr(run_activity.moving_time, "timedelta") else run_activity.moving_time
+        elapsed_time = run_activity.elapsed_time.timedelta() if hasattr(run_activity.elapsed_time, "timedelta") else run_activity.elapsed_time
 
         if not activity:
             location_country = getattr(run_activity, "location_country", "")
@@ -159,9 +143,7 @@ def update_or_create_activity(session, run_activity):
                 average_heartrate=run_activity.average_heartrate,
                 average_speed=float(run_activity.average_speed),
                 elevation_gain=current_elevation_gain,
-                summary_polyline=(
-                    run_activity.map and run_activity.map.summary_polyline or ""
-                ),
+                summary_polyline=(run_activity.map and run_activity.map.summary_polyline or ""),
                 source=source,
             )
             session.add(activity)
@@ -175,9 +157,7 @@ def update_or_create_activity(session, run_activity):
             activity.average_heartrate = run_activity.average_heartrate
             activity.average_speed = float(run_activity.average_speed)
             activity.elevation_gain = current_elevation_gain
-            activity.summary_polyline = (
-                run_activity.map and run_activity.map.summary_polyline or ""
-            )
+            activity.summary_polyline = run_activity.map and run_activity.map.summary_polyline or ""
             activity.source = source
     except Exception as e:
         print(f"something wrong with {run_activity.id}")
@@ -199,17 +179,11 @@ def add_missing_columns(engine, model):
         with engine.connect() as conn:
             for column in missing_columns:
                 column_type = str(column.type)
-                conn.execute(
-                    text(
-                        f"ALTER TABLE {table_name} ADD COLUMN {column.name} {column_type}"
-                    )
-                )
+                conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column.name} {column_type}"))
 
 
 def init_db(db_path):
-    engine = create_engine(
-        f"sqlite:///{db_path}", connect_args={"check_same_thread": False}
-    )
+    engine = create_engine(f"sqlite:///{db_path}", connect_args={"check_same_thread": False})
     Base.metadata.create_all(engine)
 
     # check missing columns

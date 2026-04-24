@@ -15,9 +15,7 @@ async def main():
 
     load_dotenv(".temp_garmin.env")
 
-    com_client = restore_or_login(
-        os.getenv("GARMIN_COM_USERNAME"), os.getenv("GARMIN_COM_PASSWORD"), False
-    )
+    com_client = restore_or_login(os.getenv("GARMIN_COM_USERNAME"), os.getenv("GARMIN_COM_PASSWORD"), False)
     garmin_com = Garmin(com_client, "COM", False)
 
     # Get more activities
@@ -37,9 +35,7 @@ async def main():
                         "cn_type": cn_type,
                     }
                 )
-                print(
-                    f'  [{act.get("activityId")}] {act.get("activityName", "")}: {act_type} -> {cn_type}'
-                )
+                print(f'  [{act.get("activityId")}] {act.get("activityName", "")}: {act_type} -> {cn_type}')
         if not activities:
             break
 

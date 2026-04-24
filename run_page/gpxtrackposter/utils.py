@@ -41,9 +41,7 @@ def lat2y(lat_deg: float) -> float:
     return 0.5 - math.log(math.tan(math.pi / 4 * (1 + lat_deg / 90))) / math.pi
 
 
-def project(
-    bbox: s2.LatLngRect, size: XY, offset: XY, latlnglines: List[List[s2.LatLng]]
-) -> List[List[Tuple[float, float]]]:
+def project(bbox: s2.LatLngRect, size: XY, offset: XY, latlnglines: List[List[s2.LatLng]]) -> List[List[Tuple[float, float]]]:
     min_x = lng2x(bbox.lng_lo().degrees)
     d_x = lng2x(bbox.lng_hi().degrees) - min_x
     while d_x >= 2:
@@ -77,9 +75,7 @@ def project(
     return lines
 
 
-def compute_grid(
-    count: int, dimensions: XY
-) -> Tuple[Optional[float], Optional[Tuple[int, int]]]:
+def compute_grid(count: int, dimensions: XY) -> Tuple[Optional[float], Optional[Tuple[int, int]]]:
     # this is somehow suboptimal O(count^2). I guess it's possible in O(count)
     min_waste = -1.0
     best_size = None

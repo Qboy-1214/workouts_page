@@ -93,9 +93,7 @@ def get_to_download_runs_ids(session, headers, sport_type):
 
 
 def get_single_run_data(session, headers, run_id, sport_type):
-    r = session.get(
-        RUN_LOG_API.format(sport_type=sport_type, run_id=run_id), headers=headers
-    )
+    r = session.get(RUN_LOG_API.format(sport_type=sport_type, run_id=run_id), headers=headers)
     if r.ok:
         return r.json()
 
@@ -112,9 +110,7 @@ def decode_runmap_data(text, is_geo=False):
     return run_points_data
 
 
-def parse_raw_data_to_nametuple(
-    run_data, old_gpx_ids, old_tcx_ids, with_gpx=False, with_tcx=False
-):
+def parse_raw_data_to_nametuple(run_data, old_gpx_ids, old_tcx_ids, with_gpx=False, with_tcx=False):
     run_data = run_data["data"]
     run_points_data = []
 
@@ -138,10 +134,7 @@ def parse_raw_data_to_nametuple(
         run_points_data = decode_runmap_data(run_data["geoPoints"], True)
         run_points_data_gpx = run_points_data
         if TRANS_GCJ02_TO_WGS84:
-            run_points_data = [
-                list(eviltransform.gcj2wgs(p["latitude"], p["longitude"]))
-                for p in run_points_data
-            ]
+            run_points_data = [list(eviltransform.gcj2wgs(p["latitude"], p["longitude"])) for p in run_points_data]
             for i, p in enumerate(run_points_data_gpx):
                 p["latitude"] = run_points_data[i][0]
                 p["longitude"] = run_points_data[i][1]
@@ -156,21 +149,14 @@ def parse_raw_data_to_nametuple(
             if p_hr:
                 p["hr"] = p_hr
 
-        if (
-            run_data["dataType"].startswith("outdoor")
-            or run_data["dataType"] == "mountaineering"
-        ):
+        if run_data["dataType"].startswith("outdoor") or run_data["dataType"] == "mountaineering":
             if with_gpx:
-                gpx_data = parse_points_to_gpx(
-                    run_points_data_gpx, start_time, KEEP2STRAVA[run_data["dataType"]]
-                )
+                gpx_data = parse_points_to_gpx(run_points_data_gpx, start_time, KEEP2STRAVA[run_data["dataType"]])
                 elevation_gain = gpx_data.get_uphill_downhill().uphill
                 if str(keep_id) not in old_gpx_ids:
                     download_keep_gpx(gpx_data.to_xml(), str(keep_id))
             if with_tcx:
-                tcx_data = parse_points_to_tcx(
-                    run_data, run_points_data_gpx, KEEP2TCX[run_data["dataType"]]
-                )
+                tcx_data = parse_points_to_tcx(run_data, run_points_data_gpx, KEEP2TCX[run_data["dataType"]])
                 # elevation_gain = tcx_data.get_uphill_downhill().uphill
                 if str(keep_id) not in old_tcx_ids:
                     download_keep_tcx(tcx_data.toprettyxml(), str(keep_id))
@@ -202,9 +188,7 @@ def parse_raw_data_to_nametuple(
         "start_latlng": start_latlng,
         "distance": run_data["distance"],
         "moving_time": timedelta(seconds=run_data["duration"]),
-        "elapsed_time": timedelta(
-            seconds=int((run_data["endTime"] - run_data["startTime"]) // 1000)
-        ),
+        "elapsed_time": timedelta(seconds=int((run_data["endTime"] - run_data["startTime"]) // 1000)),
         "average_speed": run_data["distance"] / run_data["duration"],
         "elevation_gain": elevation_gain,
         "location_country": str(run_data.get("region", "")),
@@ -235,22 +219,16 @@ def get_all_keep_tracks(
         old_gpx_ids = []
         if with_gpx:
             old_gpx_ids = os.listdir(GPX_FOLDER)
-            old_gpx_ids = [
-                i.split(".")[0] for i in old_gpx_ids if not i.startswith(".")
-            ]
+            old_gpx_ids = [i.split(".")[0] for i in old_gpx_ids if not i.startswith(".")]
         old_tcx_ids = []
         if with_tcx:
             old_tcx_ids = os.listdir(TCX_FOLDER)
-            old_tcx_ids = [
-                i.split(".")[0] for i in old_tcx_ids if not i.startswith(".")
-            ]
+            old_tcx_ids = [i.split(".")[0] for i in old_tcx_ids if not i.startswith(".")]
         for run in runs:
             print(f"parsing keep id {run}")
             try:
                 run_data = get_single_run_data(s, headers, run, api)
-                track = parse_raw_data_to_nametuple(
-                    run_data, old_gpx_ids, old_tcx_ids, with_gpx, with_tcx
-                )
+                track = parse_raw_data_to_nametuple(run_data, old_gpx_ids, old_tcx_ids, with_gpx, with_tcx)
                 tracks.append(track)
             except Exception as e:
                 print(f"Something wrong paring keep id {run}: " + str(e))
@@ -272,10 +250,7 @@ def parse_points_to_gpx(run_points_data, start_time, sport_type):
     points_dict_list = []
     # early timestamp fields in keep's data stands for delta time, but in newly data timestamp field stands for exactly time,
     # so it doesn't need to plus extra start_time
-    if (
-        run_points_data
-        and run_points_data[0]["timestamp"] > TIMESTAMP_THRESHOLD_IN_DECISECOND
-    ):
+    if run_points_data and run_points_data[0]["timestamp"] > TIMESTAMP_THRESHOLD_IN_DECISECOND:
         start_time = 0
 
     for point in run_points_data:
@@ -309,12 +284,10 @@ def parse_points_to_gpx(run_points_data, start_time, sport_type):
             elevation=p.get("elevation"),
         )
         if p.get("hr") is not None:
-            gpx_extension_hr = ET.fromstring(
-                f"""<gpxtpx:TrackPointExtension xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
+            gpx_extension_hr = ET.fromstring(f"""<gpxtpx:TrackPointExtension xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
                     <gpxtpx:hr>{p["hr"]}</gpxtpx:hr>
                     </gpxtpx:TrackPointExtension>
-                    """
-            )
+                    """)
             point.extensions.append(gpx_extension_hr)
         gpx_segment.points.append(point)
     return gpx
@@ -332,9 +305,7 @@ def parse_points_to_tcx(run_data, run_points_data, sport_type):
     """
 
     # note that the timestamp of a point is decisecond(分秒)
-    fit_start_time = datetime.fromtimestamp(
-        run_data.get("startTime") // 1000, tz=timezone.utc
-    ).strftime("%Y-%m-%dT%H:%M:%SZ")
+    fit_start_time = datetime.fromtimestamp(run_data.get("startTime") // 1000, tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # Root node
     training_center_database = ET.Element(
@@ -423,9 +394,7 @@ def parse_points_to_tcx(run_data, run_points_data, sport_type):
     return xml_str
 
 
-def find_nearest_hr(
-    hr_data_list, target_time, start_time, threshold=HR_FRAME_THRESHOLD_IN_DECISECOND
-):
+def find_nearest_hr(hr_data_list, target_time, start_time, threshold=HR_FRAME_THRESHOLD_IN_DECISECOND):
     """
     Find the nearest heart rate data point to the target time.
     if cannot found suitable HR data within the specified time frame (within 10 seconds by default), there will be no hr data return
@@ -495,14 +464,10 @@ def download_keep_tcx(tcx_data, keep_id):
         pass
 
 
-def run_keep_sync(
-    email, password, keep_sports_data_api, with_gpx=False, with_tcx=False
-):
+def run_keep_sync(email, password, keep_sports_data_api, with_gpx=False, with_tcx=False):
     generator = Generator(SQL_FILE)
     old_tracks_ids = generator.get_old_tracks_ids()
-    new_tracks = get_all_keep_tracks(
-        email, password, old_tracks_ids, keep_sports_data_api, with_gpx, with_tcx
-    )
+    new_tracks = get_all_keep_tracks(email, password, old_tracks_ids, keep_sports_data_api, with_gpx, with_tcx)
     generator.sync_from_app(new_tracks)
 
     activities_list = generator.load()
@@ -535,9 +500,7 @@ if __name__ == "__main__":
     )
     options = parser.parse_args()
     for _tpye in options.sync_types:
-        assert (
-            _tpye in KEEP_SPORT_TYPES
-        ), f"{_tpye} are not supported type, please make sure that the type entered in the {KEEP_SPORT_TYPES}"
+        assert _tpye in KEEP_SPORT_TYPES, f"{_tpye} are not supported type, please make sure that the type entered in the {KEEP_SPORT_TYPES}"
     run_keep_sync(
         options.phone_number,
         options.password,

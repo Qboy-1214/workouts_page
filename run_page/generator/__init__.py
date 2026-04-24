@@ -67,9 +67,7 @@ class Generator:
                 continue
             if IGNORE_BEFORE_SAVING:
                 if activity.map and activity.map.summary_polyline:
-                    activity.map.summary_polyline = filter_out(
-                        activity.map.summary_polyline
-                    )
+                    activity.map.summary_polyline = filter_out(activity.map.summary_polyline)
             # Note: source is now hardcoded in update_or_create_activity for stravalib 2.x compatibility
             # strava uses total_elevation_gain as elevation_gain
             created = update_or_create_activity(self.session, activity)
@@ -82,9 +80,7 @@ class Generator:
 
     def sync_from_data_dir(self, data_dir, file_suffix="gpx", activity_title_dict={}):
         loader = track_loader.TrackLoader()
-        tracks = loader.load_tracks(
-            data_dir, file_suffix=file_suffix, activity_title_dict=activity_title_dict
-        )
+        tracks = loader.load_tracks(data_dir, file_suffix=file_suffix, activity_title_dict=activity_title_dict)
         print(f"load {len(tracks)} tracks")
         if not tracks:
             print("No tracks found.")
@@ -146,11 +142,7 @@ class Generator:
         last_date = None
         for activity in activities:
             # Determine running streak.
-            date = (
-                datetime.datetime.fromisoformat(activity.start_date_local)
-                .astimezone()
-                .date()
-            )
+            date = datetime.datetime.fromisoformat(activity.start_date_local).astimezone().date()
             if last_date is None:
                 streak = 1
             elif date == last_date:
@@ -169,11 +161,7 @@ class Generator:
         return activity_list
 
     def loadForMapping(self):
-        activities = (
-            self.session.query(Activity)
-            .filter(Activity.type.in_(MAPPING_TYPE))
-            .order_by(Activity.start_date_local)
-        )
+        activities = self.session.query(Activity).filter(Activity.type.in_(MAPPING_TYPE)).order_by(Activity.start_date_local)
         activity_list = []
 
         streak = 0
@@ -181,11 +169,7 @@ class Generator:
         for activity in activities:
             # Determine running streak.
             # if activity.type == "Run" or activity.type == "Walk":
-            date = (
-                datetime.datetime.fromisoformat(activity.start_date_local)
-                .astimezone()
-                .date()
-            )
+            date = datetime.datetime.fromisoformat(activity.start_date_local).astimezone().date()
             if last_date is None:
                 streak = 1
             elif date == last_date:
@@ -212,11 +196,7 @@ class Generator:
 
     def get_old_tracks_dates(self):
         try:
-            activities = (
-                self.session.query(Activity)
-                .order_by(Activity.start_date_local.desc())
-                .all()
-            )
+            activities = self.session.query(Activity).order_by(Activity.start_date_local.desc()).all()
             return [str(a.start_date_local) for a in activities]
         except Exception as e:
             # pass the error

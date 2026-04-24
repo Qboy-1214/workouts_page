@@ -83,9 +83,7 @@ def download_joyrun_tcx(tcx_data, joyrun_id):
         pass
 
 
-def formated_input(
-    run_data, run_data_label, tcx_label
-):  # load run_data from run_data_label, parse to tcx_label, return xml node
+def formated_input(run_data, run_data_label, tcx_label):  # load run_data from run_data_label, parse to tcx_label, return xml node
     fit_data = str(run_data[run_data_label])
     chile_node = ET.Element(tcx_label)
     chile_node.text = fit_data
@@ -110,9 +108,7 @@ class JoyrunAuth:
         if not uid:  # uid == 0 or ''
             uid = sid = ""
         pre_string = "{params_string}{salt}{uid}{sid}".format(
-            params_string="".join(
-                "".join((k, str(v))) for k, v in sorted(params.items())
-            ),
+            params_string="".join("".join((k, str(v))) for k, v in sorted(params.items())),
             salt=salt,
             uid=str(uid),
             sid=sid,
@@ -137,9 +133,7 @@ class JoyrunAuth:
         r.headers["_sign"] = signV2
 
         if r.method == "GET":
-            r.prepare_url(
-                r.url, params={"signature": signV1, "timestamp": params["timestamp"]}
-            )
+            r.prepare_url(r.url, params={"signature": signV1, "timestamp": params["timestamp"]})
         elif r.method == "POST":
             params["signature"] = signV1
             r.prepare_body(data=params, files=None)
@@ -192,9 +186,7 @@ class Joyrun:
         self.session.headers.update({"ypcookie": loginCookie})
         self.session.cookies.clear()
         self.session.cookies.set("ypcookie", quote(loginCookie).lower())
-        self.session.headers.update(
-            self.device_info_headers
-        )  # 更新设备信息中的 uid 字段
+        self.session.headers.update(self.device_info_headers)  # 更新设备信息中的 uid 字段
 
     def login_by_phone(self):
         params = {
@@ -285,9 +277,7 @@ class Joyrun:
             return []
 
     @staticmethod
-    def new_track_point(
-        latitude, longitude, elevation, time, heart_rate
-    ) -> gpxpy.gpx.GPXTrackPoint:
+    def new_track_point(latitude, longitude, elevation, time, heart_rate) -> gpxpy.gpx.GPXTrackPoint:
         track_point = gpxpy.gpx.GPXTrackPoint(
             latitude=latitude,
             longitude=longitude,
@@ -404,9 +394,7 @@ class Joyrun:
         # local time
         fit_start_time_local = run_data["starttime"]
         # zulu time
-        fit_start_time = time.strftime(
-            "%Y-%m-%dT%H:%M:%SZ", time.localtime(fit_start_time_local)
-        )
+        fit_start_time = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.localtime(fit_start_time_local))
 
         # Root node
         training_center_database = ET.Element(
@@ -469,9 +457,7 @@ class Joyrun:
             tp = ET.Element("Trackpoint")
             track.append(tp)
             # Time
-            time_stamp = time.strftime(
-                "%Y-%m-%dT%H:%M:%SZ", time.localtime(current_time)
-            )
+            time_stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.localtime(current_time))
             time_label = ET.Element("Time")
             time_label.text = time_stamp
             tp.append(time_label)
@@ -541,9 +527,7 @@ class Joyrun:
         data = r.json()
         return data
 
-    def parse_raw_data_to_nametuple(
-        self, run_data, old_gpx_ids, with_gpx=False, with_tcx=False
-    ):
+    def parse_raw_data_to_nametuple(self, run_data, old_gpx_ids, with_gpx=False, with_tcx=False):
         run_data = run_data["runrecord"]
         joyrun_id = run_data["fid"]
 
@@ -570,11 +554,7 @@ class Joyrun:
                 tcx_data = self.parse_points_to_tcx(run_data)
                 download_joyrun_tcx(tcx_data, str(joyrun_id))
         try:
-            heart_rate_list = (
-                ast.literal_eval(run_data["heartrate"])
-                if run_data["heartrate"]
-                else None
-            )
+            heart_rate_list = ast.literal_eval(run_data["heartrate"]) if run_data["heartrate"] else None
         except (ValueError, SyntaxError) as e:
             print(f"Heart Rate: can not parse for {run_data['heartrate']}: {e}")
 
@@ -604,9 +584,7 @@ class Joyrun:
             "subtype": "Run",
             "start_date": datetime.strftime(start_date, "%Y-%m-%d %H:%M:%S"),
             "end": datetime.strftime(end, "%Y-%m-%d %H:%M:%S"),
-            "start_date_local": datetime.strftime(
-                start_date_local, "%Y-%m-%d %H:%M:%S"
-            ),
+            "start_date_local": datetime.strftime(start_date_local, "%Y-%m-%d %H:%M:%S"),
             "end_local": datetime.strftime(end_local, "%Y-%m-%d %H:%M:%S"),
             "length": run_data["meter"],
             "average_heartrate": heart_rate,
@@ -614,18 +592,14 @@ class Joyrun:
             "start_latlng": start_latlng,
             "distance": run_data["meter"],
             "moving_time": timedelta(seconds=run_data["second"]),
-            "elapsed_time": timedelta(
-                seconds=int((run_data["endtime"] - run_data["starttime"]))
-            ),
+            "elapsed_time": timedelta(seconds=int((run_data["endtime"] - run_data["starttime"]))),
             "average_speed": run_data["meter"] / run_data["second"],
             "elevation_gain": elevation_gain,
             "location_country": location_country,
         }
         return namedtuple("x", d.keys())(*d.values())
 
-    def get_all_joyrun_tracks(
-        self, old_tracks_ids, with_gpx=False, with_tcx=False, threshold=10
-    ):
+    def get_all_joyrun_tracks(self, old_tracks_ids, with_gpx=False, with_tcx=False, threshold=10):
         run_ids = self.get_runs_records_ids()
         old_tracks_ids = [int(i) for i in old_tracks_ids if i.isdigit()]
 
@@ -652,9 +626,7 @@ class Joyrun:
             if not is_duplicate:
                 seen_runs[start_time] = {"run_data": run_data, "distance": distance}
         for run in seen_runs.values():
-            track = self.parse_raw_data_to_nametuple(
-                run["run_data"], old_gpx_ids, with_gpx, with_tcx
-            )
+            track = self.parse_raw_data_to_nametuple(run["run_data"], old_gpx_ids, with_gpx, with_tcx)
             tracks.append(track)
         return tracks
 
@@ -665,9 +637,7 @@ def _generate_svg_profile(athlete, min_grid_distance):
         # Skip to avoid override
         print("Skipping gen_svg. Fill your name with --athlete if you don't want skip")
         return
-    print(
-        f"Running scripts for [Make svg GitHub profile] with athlete={athlete} min_grid_distance={min_grid_distance}"
-    )
+    print(f"Running scripts for [Make svg GitHub profile] with athlete={athlete} min_grid_distance={min_grid_distance}")
     cmd_args_list = [
         [
             sys.executable,
@@ -733,9 +703,7 @@ def _generate_svg_profile(athlete, min_grid_distance):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("phone_number_or_uid", help="joyrun phone number or uid")
-    parser.add_argument(
-        "identifying_code_or_sid", help="joyrun identifying_code from sms or sid"
-    )
+    parser.add_argument("identifying_code_or_sid", help="joyrun identifying_code from sms or sid")
     parser.add_argument(
         "--athlete",
         dest="athlete",
@@ -788,9 +756,7 @@ if __name__ == "__main__":
 
     generator = Generator(SQL_FILE)
     old_tracks_ids = generator.get_old_tracks_ids()
-    tracks = j.get_all_joyrun_tracks(
-        old_tracks_ids, options.with_gpx, options.with_tcx, options.threshold
-    )
+    tracks = j.get_all_joyrun_tracks(old_tracks_ids, options.with_gpx, options.with_tcx, options.threshold)
     generator.sync_from_app(tracks)
     activities_list = generator.load()
     with open(JSON_FILE, "w") as f:

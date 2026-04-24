@@ -30,10 +30,7 @@ def is_fit_file(file):
 
 def process_garmin_data(origin_file, use_fake_garmin_device):
     if not FIT_TOOL_AVAILABLE:
-        print(
-            "fit-tool not available, skipping Garmin data processing. "
-            "Install fit-tool for Python < 3.13 to use this feature."
-        )
+        print("fit-tool not available, skipping Garmin data processing. " "Install fit-tool for Python < 3.13 to use this feature.")
         origin_file.seek(0)
         return BytesIO(origin_file.read())
 
@@ -121,9 +118,7 @@ def get_processed_heart_rate_message(record_messages):
         if message.heart_rate is None or message.heart_rate == 255:
             valid_heart_rate = find_valid_heart_rate(record_messages, i)
             if valid_heart_rate is not None:
-                processed_messages.append(
-                    create_new_record_message(message, valid_heart_rate)
-                )
+                processed_messages.append(create_new_record_message(message, valid_heart_rate))
             else:
                 processed_messages.append(message)
         else:

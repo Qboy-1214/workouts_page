@@ -15,12 +15,8 @@ from stravaweblib.webclient import BASE_URL
 from utils import make_strava_client
 
 
-async def upload_to_activities(
-    garmin_client, strava_client, strava_web_client, format, use_fake_garmin_device
-):
-    print(
-        f"[upload_to_activities] Starting upload to Garmin, auth domain: {garmin_client.auth_domain}"
-    )
+async def upload_to_activities(garmin_client, strava_client, strava_web_client, format, use_fake_garmin_device):
+    print(f"[upload_to_activities] Starting upload to Garmin, auth domain: {garmin_client.auth_domain}")
     last_activity = await garmin_client.get_activities(0, 1)
     if not last_activity:
         print("no garmin activity")
@@ -45,11 +41,7 @@ async def upload_to_activities(
         # Extract sport type from sport_type field (contains actual sport like Squash, Soccer)
         # Fall back to type if sport_type not available
         if hasattr(i, "sport_type") and i.sport_type:
-            sport_type = (
-                i.sport_type.root
-                if hasattr(i.sport_type, "root")
-                else str(i.sport_type)
-            )
+            sport_type = i.sport_type.root if hasattr(i.sport_type, "root") else str(i.sport_type)
         elif hasattr(i.type, "root"):
             sport_type = i.type.root
         else:
@@ -58,26 +50,18 @@ async def upload_to_activities(
         activity_name = i.name if hasattr(i, "name") and i.name else None
         # Extract activity start time (for matching after upload)
         activity_start_time = i.start_date or i.start_date_local or None
-        print(
-            f"[download] Getting activity data for activity ID: {i.id}, sport_type: {sport_type}, name: {activity_name}, start: {activity_start_time}"
-        )
+        print(f"[download] Getting activity data for activity ID: {i.id}, sport_type: {sport_type}, name: {activity_name}, start: {activity_start_time}")
         try:
-            data = strava_web_client.get_activity_data(
-                i.id, fmt=format, json_fmt=DataFormat.TCX
-            )
+            data = strava_web_client.get_activity_data(i.id, fmt=format, json_fmt=DataFormat.TCX)
             # Wrap the data with sport type, activity name, and start time
             # Format: (data, sport_type, activity_name, activity_start_time)
             wrapped_data = (data, sport_type, activity_name, activity_start_time)
-            print(
-                f"[download] Got activity data: {data.filename}, sport_type: {sport_type}, name: {activity_name}, start time: {activity_start_time}"
-            )
+            print(f"[download] Got activity data: {data.filename}, sport_type: {sport_type}, name: {activity_name}, start time: {activity_start_time}")
             files_list.append(wrapped_data)
         except Exception as ex:
             print("get strava data error: ", ex)
     print(f"[download] Downloaded {len(files_list)} files, starting upload...")
-    await garmin_client.upload_activities_original_from_strava(
-        files_list, use_fake_garmin_device
-    )
+    await garmin_client.upload_activities_original_from_strava(files_list, use_fake_garmin_device)
     print("[upload_to_activities] Done")
     return files_list
 
@@ -87,12 +71,8 @@ if __name__ == "__main__":
     parser.add_argument("strava_client_id", help="strava client id")
     parser.add_argument("strava_client_secret", help="strava client secret")
     parser.add_argument("strava_refresh_token", help="strava refresh token")
-    parser.add_argument(
-        "--garmin-username", dest="garmin_username", help="Garmin username (email)"
-    )
-    parser.add_argument(
-        "--garmin-password", dest="garmin_password", help="Garmin password"
-    )
+    parser.add_argument("--garmin-username", dest="garmin_username", help="Garmin username (email)")
+    parser.add_argument("--garmin-password", dest="garmin_password", help="Garmin password")
     parser.add_argument("strava_email", nargs="?", help="email of strava")
     parser.add_argument("strava_password", nargs="?", help="password of strava")
     parser.add_argument("strava_jwt", nargs="?", help="jwt token of strava")
@@ -112,9 +92,7 @@ if __name__ == "__main__":
     options = parser.parse_args()
 
     print("[main] STRAVA_TO_GARMIN_SYNC START - syncing to COM (Garmin International)")
-    print(
-        "  Note: For CN sync, run garmin_sync_global_cn.py separately after COM sync completes"
-    )
+    print("  Note: For CN sync, run garmin_sync_global_cn.py separately after COM sync completes")
 
     strava_client = make_strava_client(
         options.strava_client_id,
@@ -122,11 +100,7 @@ if __name__ == "__main__":
         options.strava_refresh_token,
     )
     # Get auth credentials from command line args
-    jwt = (
-        options.strava_jwt
-        if hasattr(options, "strava_jwt") and options.strava_jwt
-        else ""
-    )
+    jwt = options.strava_jwt if hasattr(options, "strava_jwt") and options.strava_jwt else ""
     email = options.strava_email if hasattr(options, "strava_email") else ""
     password = options.strava_password if hasattr(options, "strava_password") else ""
 
@@ -144,9 +118,7 @@ if __name__ == "__main__":
             )
         else:
             # Treat as _strava4_session cookie - directly create session without WebClient __init__
-            print(
-                "Using _strava4_session cookie for Strava web login (JWT secret contains session cookie)"
-            )
+            print("Using _strava4_session cookie for Strava web login (JWT secret contains session cookie)")
             print(f"[main] Session cookie value length: {len(jwt)}")
 
             # Create a minimal web client by subclassing to bypass __init__
@@ -158,24 +130,14 @@ if __name__ == "__main__":
             strava_web_client.protocol = "https"
             strava_web_client.host = "www.strava.com"
             strava_web_client._session = _req.Session()
-            strava_web_client._session.headers.update(
-                {
-                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
-                }
-            )
+            strava_web_client._session.headers.update({"Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"})
             # Set the _strava4_session cookie
-            strava_web_client._session.cookies.set(
-                "_strava4_session", jwt, domain=".strava.com", secure=True
-            )
+            strava_web_client._session.cookies.set("_strava4_session", jwt, domain=".strava.com", secure=True)
             # Verify by fetching /me to get athlete ID
             try:
                 print(f"[main] Verifying session cookie via {BASE_URL}/me...")
-                resp = strava_web_client._session.get(
-                    f"{BASE_URL}/me", allow_redirects=False
-                )
-                print(
-                    f"[main] /me response status: {resp.status_code}, location: {resp.headers.get('Location', 'none')}"
-                )
+                resp = strava_web_client._session.get(f"{BASE_URL}/me", allow_redirects=False)
+                print(f"[main] /me response status: {resp.status_code}, location: {resp.headers.get('Location', 'none')}")
                 if resp.status_code == 302:
                     redirect_url = resp.headers.get("Location", "")
                     # Extract athlete ID from redirect URL like https://www.strava.com/athletes/140877474
@@ -187,24 +149,14 @@ if __name__ == "__main__":
                             domain=".strava.com",
                             secure=True,
                         )
-                        print(
-                            f"[main] Session cookie verified, athlete ID: {athlete_id}"
-                        )
+                        print(f"[main] Session cookie verified, athlete ID: {athlete_id}")
                     else:
-                        print(
-                            f"[main] WARNING: /me redirected to unexpected URL: {redirect_url}"
-                        )
+                        print(f"[main] WARNING: /me redirected to unexpected URL: {redirect_url}")
                 elif resp.status_code == 200:
-                    print(
-                        f"[main] WARNING: /me returned 200 (not authenticated), body snippet: {resp.text[:200]}"
-                    )
+                    print(f"[main] WARNING: /me returned 200 (not authenticated), body snippet: {resp.text[:200]}")
                 else:
-                    print(
-                        f"[main] WARNING: /me returned unexpected status {resp.status_code}"
-                    )
-                strava_web_client._session.cookies.set(
-                    "strava_remember_token", jwt, domain=".strava.com", secure=True
-                )
+                    print(f"[main] WARNING: /me returned unexpected status {resp.status_code}")
+                strava_web_client._session.cookies.set("strava_remember_token", jwt, domain=".strava.com", secure=True)
             except Exception as e:
                 print(f"Warning: couldn't verify session cookie: {e}")
     elif email and password:
@@ -215,9 +167,7 @@ if __name__ == "__main__":
             password=password,
         )
     else:
-        raise ValueError(
-            "Must provide STRAVA_JWT (can be JWT token or _strava4_session cookie), or both STRAVA_EMAIL and STRAVA_PASSWORD"
-        )
+        raise ValueError("Must provide STRAVA_JWT (can be JWT token or _strava4_session cookie), or both STRAVA_EMAIL and STRAVA_PASSWORD")
 
     # Always sync to COM (Garmin International)
     garmin_auth_domain = "COM"
@@ -226,28 +176,18 @@ if __name__ == "__main__":
     garmin_username = os.getenv("GARMIN_COM_USERNAME") or options.garmin_username
     garmin_password = os.getenv("GARMIN_COM_PASSWORD") or options.garmin_password
 
-    print(
-        f"[main] Garmin auth domain: {garmin_auth_domain}, username set: {bool(garmin_username)}, password set: {bool(garmin_password)}"
-    )
+    print(f"[main] Garmin auth domain: {garmin_auth_domain}, username set: {bool(garmin_username)}, password set: {bool(garmin_password)}")
 
     if not garmin_username or not garmin_password:
-        print(
-            "Missing Garmin credentials: please provide --garmin-username/--garmin-password"
-        )
-        print(
-            "Or set environment variables: GARMIN_COM_USERNAME and GARMIN_COM_PASSWORD"
-        )
+        print("Missing Garmin credentials: please provide --garmin-username/--garmin-password")
+        print("Or set environment variables: GARMIN_COM_USERNAME and GARMIN_COM_PASSWORD")
         sys.exit(1)
 
     garmin_client = None
     try:
         print(f"[main] Logging in to Garmin {garmin_auth_domain}...")
-        garmin_client = restore_or_login(
-            garmin_username, garmin_password, garmin_auth_domain
-        )
-        print(
-            f"[main] Garmin login successful, client type: {type(garmin_client).__name__}"
-        )
+        garmin_client = restore_or_login(garmin_username, garmin_password, garmin_auth_domain)
+        print(f"[main] Garmin login successful, client type: {type(garmin_client).__name__}")
     except Exception as err:
         print(f"[main] Garmin login failed: {err}")
         garmin_client = None

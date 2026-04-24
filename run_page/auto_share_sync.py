@@ -85,9 +85,7 @@ def generate_share_image(distance, pace, time, date, client):
         print(f"Error generating share image: {e}")
 
 
-def generate_route_svg(
-    polyline_str, output_filename=DEFAULT_OUTPUT_FILENAME, format="png"
-):
+def generate_route_svg(polyline_str, output_filename=DEFAULT_OUTPUT_FILENAME, format="png"):
     """
     Generates a route visualization from a polyline string.
 
@@ -128,9 +126,7 @@ def generate_route_svg(
             return SVG_HEIGHT / 2
         return SVG_HEIGHT - SVG_MARGIN - (lat - min_lat) / lat_range * draw_height
 
-    svg_points_str = " ".join(
-        f"{scale_x(lon):.2f},{scale_y(lat):.2f}" for lat, lon in points
-    )
+    svg_points_str = " ".join(f"{scale_x(lon):.2f},{scale_y(lat):.2f}" for lat, lon in points)
 
     start_lat, start_lon = points[0]
     end_lat, end_lon = points[-1]
@@ -173,11 +169,7 @@ def run_auto_sync(client, format="svg", date=None):
     activities_list = generator.load()
     if date:
         activity = next(
-            (
-                activity
-                for activity in activities_list
-                if activity["start_date_local"].startswith(date)
-            ),
+            (activity for activity in activities_list if activity["start_date_local"].startswith(date)),
             None,
         )
         if not activity:
@@ -215,12 +207,8 @@ if __name__ == "__main__":
         help="Output format: svg or png (default: png)",
     )
     # Initialize OpenAI client
-    parser.add_argument("--api_key", required=True, help="OpenAI API key") or os.getenv(
-        "OPENAI_API_KEY"
-    )
-    parser.add_argument("--base_url", default="", help="OpenAI base URL") or os.getenv(
-        "OPENAI_BASE_URL"
-    )
+    parser.add_argument("--api_key", required=True, help="OpenAI API key") or os.getenv("OPENAI_API_KEY")
+    parser.add_argument("--base_url", default="", help="OpenAI base URL") or os.getenv("OPENAI_BASE_URL")
     parser.add_argument("--date", help="Date of the activity in YYYY-MM-DD format")
     args = parser.parse_args()
     if args.base_url:

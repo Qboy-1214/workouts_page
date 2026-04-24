@@ -57,9 +57,7 @@ class Coros:
             resp_json = response.json()
             access_token = resp_json.get("data", {}).get("accessToken")
             if not access_token:
-                raise Exception(
-                    "============Login failed! please check your account and password==========="
-                )
+                raise Exception("============Login failed! please check your account and password===========")
             self.headers = {
                 "accesstoken": access_token,
                 "cookie": f"CPL-coros-region=2; CPL-coros-token={access_token}",
@@ -96,15 +94,10 @@ class Coros:
 
     async def download_activity(self, label_id, sport_type, file_type):
         if sport_type == 101 and file_type == "gpx":
-            print(
-                f"Sport type {sport_type} is not supported in {file_type} file. The activity will be ignored"
-            )
+            print(f"Sport type {sport_type} is not supported in {file_type} file. The activity will be ignored")
             return None, None
         download_folder = FOLDER_DICT[file_type]
-        download_url = (
-            f"{COROS_URL_DICT.get('DOWNLOAD_URL')}?labelId={label_id}&sportType={sport_type}"
-            f"&fileType={COROS_TYPE_DICT[file_type]}"
-        )
+        download_url = f"{COROS_URL_DICT.get('DOWNLOAD_URL')}?labelId={label_id}&sportType={sport_type}" f"&fileType={COROS_TYPE_DICT[file_type]}"
         file_url = None
         fname = ""
         file_path = ""
@@ -126,9 +119,7 @@ class Coros:
                         await f.write(chunk)
             return label_id, fname
         except httpx.HTTPStatusError as exc:
-            print(
-                f"Failed to download {file_url} with status code {response.status_code}: {exc}"
-            )
+            print(f"Failed to download {file_url} with status code {response.status_code}: {exc}")
         except Exception as exc:
             print(f"Error occurred while downloading {file_url}: {exc}")
         if file_path and os.path.exists(file_path):
@@ -159,12 +150,7 @@ async def download_and_generate(account, password, only_run, file_type):
     start_time = time.time()
     await gather_with_concurrency(
         10,
-        [
-            coros.download_activity(
-                label_id, activity_id_type_dict[label_id], file_type
-            )
-            for label_id in to_generate_coros_ids
-        ],
+        [coros.download_activity(label_id, activity_id_type_dict[label_id], file_type) for label_id in to_generate_coros_ids],
     )
     print(f"Download finished. Elapsed {time.time()-start_time} seconds")
     await coros.req.aclose()
@@ -219,6 +205,4 @@ if __name__ == "__main__":
     file_type = file_type if file_type in ["gpx", "tcx", "fit"] else "fit"
     encrypted_pwd = hashlib.md5(password.encode()).hexdigest()
 
-    asyncio.run(
-        download_and_generate(account, encrypted_pwd, is_only_running, file_type)
-    )
+    asyncio.run(download_and_generate(account, encrypted_pwd, is_only_running, file_type))

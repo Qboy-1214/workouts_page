@@ -15,7 +15,7 @@ print(f"Exit code: {result.returncode}")
 # Check version
 import garminconnect
 
-print(f"\n=== garminconnect info ===")
+print("\n=== garminconnect info ===")
 print(f"Module file: {garminconnect.__file__}")
 
 # Check for is_cn parameter

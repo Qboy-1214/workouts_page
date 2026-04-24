@@ -126,9 +126,7 @@ def fix_location_for_activity(session, activity, dry_run=False):
             # Check if new location is more specific than "China"
             if new_location != "China" and "China" not in new_location:
                 if dry_run:
-                    print(
-                        f"  Would update location from '{activity.location_country}' to '{new_location}'"
-                    )
+                    print(f"  Would update location from '{activity.location_country}' to '{new_location}'")
                 else:
                     activity.location_country = new_location
                     session.add(activity)
@@ -161,11 +159,7 @@ def fix_locations(session, dry_run=False, limit=None):
     """
     # Find activities that need location fixes
     query = session.query(Activity).filter(
-        (Activity.location_country == "China")
-        | (
-            (Activity.location_country.is_(None))
-            & (Activity.summary_polyline.isnot(None))
-        )
+        (Activity.location_country == "China") | ((Activity.location_country.is_(None)) & (Activity.summary_polyline.isnot(None)))
     )
 
     if limit:
@@ -193,20 +187,14 @@ def fix_locations(session, dry_run=False, limit=None):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Fix location problems in activities database"
-    )
-    parser.add_argument(
-        "--db", default="data.db", help="Path to database file (default: data.db)"
-    )
+    parser = argparse.ArgumentParser(description="Fix location problems in activities database")
+    parser.add_argument("--db", default="data.db", help="Path to database file (default: data.db)")
     parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Show what would be changed without making changes",
     )
-    parser.add_argument(
-        "--limit", type=int, help="Maximum number of activities to process"
-    )
+    parser.add_argument("--limit", type=int, help="Maximum number of activities to process")
 
     args = parser.parse_args()
 
@@ -222,9 +210,7 @@ def main():
         print()
 
     try:
-        fixed_count, total_checked = fix_locations(
-            session, dry_run=args.dry_run, limit=args.limit
-        )
+        fixed_count, total_checked = fix_locations(session, dry_run=args.dry_run, limit=args.limit)
 
         print()
         print("=" * 60)

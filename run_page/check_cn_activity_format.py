@@ -13,9 +13,7 @@ load_dotenv(".temp_garmin.env")
 
 
 async def main():
-    cn_client = GarminCngarthClient(
-        os.getenv("GARMIN_CN_USERNAME"), os.getenv("GARMIN_CN_PASSWORD"), is_cn=True
-    )
+    cn_client = GarminCngarthClient(os.getenv("GARMIN_CN_USERNAME"), os.getenv("GARMIN_CN_PASSWORD"), is_cn=True)
     cn_client.login()
     garth = cn_client._garth_client
 

@@ -25,12 +25,8 @@ if __name__ == "__main__":
     parser.add_argument("strava_client_id", help="strava client id")
     parser.add_argument("strava_client_secret", help="strava client secret")
     parser.add_argument("strava_refresh_token", help="strava refresh token")
-    parser.add_argument(
-        "--garmin-username", dest="garmin_username", help="Garmin username (email)"
-    )
-    parser.add_argument(
-        "--garmin-password", dest="garmin_password", help="Garmin password"
-    )
+    parser.add_argument("--garmin-username", dest="garmin_username", help="Garmin username (email)")
+    parser.add_argument("--garmin-password", dest="garmin_password", help="Garmin password")
     parser.add_argument(
         "--is-cn",
         dest="is_cn",
@@ -64,15 +60,11 @@ if __name__ == "__main__":
 
     if not garmin_username or not garmin_password:
         print(f"Missing Garmin credentials for {garmin_auth_domain}")
-        print(
-            "Set environment variables: GARMIN_{DOMAIN}_USERNAME and GARMIN_{DOMAIN}_PASSWORD"
-        )
+        print("Set environment variables: GARMIN_{DOMAIN}_USERNAME and GARMIN_{DOMAIN}_PASSWORD")
         sys.exit(1)
 
     print(f"[main] Logging in to Garmin {garmin_auth_domain}...")
-    garmin_client = restore_or_login(
-        garmin_username, garmin_password, garmin_auth_domain
-    )
+    garmin_client = restore_or_login(garmin_username, garmin_password, garmin_auth_domain)
     garmin_wrapper = Garmin(garmin_client, garmin_auth_domain)
 
     is_only_running = False

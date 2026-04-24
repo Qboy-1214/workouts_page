@@ -107,9 +107,7 @@ class GarminCngarthClient:
 
         try:
             # Use garth's Activity.list()
-            activities = GarthActivity.list(
-                limit=limit, start=start, client=self._garth_client
-            )
+            activities = GarthActivity.list(limit=limit, start=start, client=self._garth_client)
 
             # Convert to dict format compatible with garminconnect
             result = []
@@ -118,25 +116,11 @@ class GarminCngarthClient:
                     "activityId": act.activity_id,
                     "activityName": act.activity_name,
                     "activityType": {
-                        "typeKey": (
-                            act.activity_type.type_key
-                            if act.activity_type
-                            else "unknown"
-                        ),
-                        "typeGui": (
-                            act.activity_type.type_key
-                            if act.activity_type
-                            else "unknown"
-                        ),
+                        "typeKey": (act.activity_type.type_key if act.activity_type else "unknown"),
+                        "typeGui": (act.activity_type.type_key if act.activity_type else "unknown"),
                     },
-                    "startTimeGMT": (
-                        act.start_time_gmt.isoformat() if act.start_time_gmt else None
-                    ),
-                    "startTimeLocal": (
-                        act.start_time_local.isoformat()
-                        if act.start_time_local
-                        else None
-                    ),
+                    "startTimeGMT": (act.start_time_gmt.isoformat() if act.start_time_gmt else None),
+                    "startTimeLocal": (act.start_time_local.isoformat() if act.start_time_local else None),
                 }
                 # distance is a top-level field in Activity.list() response (not inside summary)
                 act_dict["distance"] = act.distance
@@ -178,13 +162,9 @@ class GarminCngarthClient:
                 "activityId": act.activity_id,
                 "activityName": act.activity_name,
                 "activityType": {
-                    "typeKey": (
-                        act.activity_type.type_key if act.activity_type else "unknown"
-                    ),
+                    "typeKey": (act.activity_type.type_key if act.activity_type else "unknown"),
                 },
-                "startTimeGMT": (
-                    act.start_time_gmt.isoformat() if act.start_time_gmt else None
-                ),
+                "startTimeGMT": (act.start_time_gmt.isoformat() if act.start_time_gmt else None),
             }
 
             # Add full summary
@@ -201,9 +181,7 @@ class GarminCngarthClient:
                     "maxSpeed": s.max_speed,
                     "elevationGain": s.elevation_gain,
                     "elevationLoss": s.elevation_loss,
-                    "startTimeGMT": (
-                        s.start_time_gmt.isoformat() if s.start_time_gmt else None
-                    ),
+                    "startTimeGMT": (s.start_time_gmt.isoformat() if s.start_time_gmt else None),
                 }
 
             return act_dict
@@ -250,9 +228,7 @@ class GarminCngarthClient:
             traceback.print_exc()
             return None
 
-    def upload_activity(
-        self, filepath: str, activity_type: str = None, title: str = None
-    ):
+    def upload_activity(self, filepath: str, activity_type: str = None, title: str = None):
         """
         Upload activity file to Garmin CN.
 
@@ -297,9 +273,7 @@ class GarminCngarthClient:
 
         try:
             GarthActivity.update(int(activity_id), name=name, client=self._garth_client)
-            print(
-                f"[GarminCngarthClient] Updated activity {activity_id} name to: {name}"
-            )
+            print(f"[GarminCngarthClient] Updated activity {activity_id} name to: {name}")
         except Exception as e:
             print(f"[GarminCngarthClient] update_activity_name failed: {e}")
             raise
@@ -370,9 +344,7 @@ class GarminCngarthClient:
                 },
             }
             self._garth_client.connectapi(path, method="PUT", json=payload)
-            print(
-                f"[GarminCngarthClient] Updated activity {activity_id} type to {type_key}"
-            )
+            print(f"[GarminCngarthClient] Updated activity {activity_id} type to {type_key}")
         except Exception as e:
             print(f"[GarminCngarthClient] update_activity_type failed: {e}")
             raise

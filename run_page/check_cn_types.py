@@ -14,9 +14,7 @@ load_dotenv(".temp_garmin.env")
 
 async def main():
     # Login to CN
-    cn_client = GarminCngarthClient(
-        os.getenv("GARMIN_CN_USERNAME"), os.getenv("GARMIN_CN_PASSWORD"), is_cn=True
-    )
+    cn_client = GarminCngarthClient(os.getenv("GARMIN_CN_USERNAME"), os.getenv("GARMIN_CN_PASSWORD"), is_cn=True)
     cn_client.login()
 
     # Get activity summary directly via API

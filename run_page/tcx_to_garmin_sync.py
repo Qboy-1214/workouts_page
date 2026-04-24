@@ -26,8 +26,7 @@ def get_to_generate_files(last_time):
     tcx_files_dict = {
         int(i[0].trackpoints[0].time.timestamp()): i[1]
         for i in tcx_files
-        if len(i[0].trackpoints) > 0
-        and int(i[0].trackpoints[0].time.timestamp()) > last_time
+        if len(i[0].trackpoints) > 0 and int(i[0].trackpoints[0].time.timestamp()) > last_time
     }
 
     dict(sorted(tcx_files_dict.items()))
@@ -41,31 +40,19 @@ async def upload_tcx_files_to_garmin(options):
 
     # Priority: environment variables > command line args
     if garmin_auth_domain == "CN":
-        garmin_username = os.getenv("GARMIN_CN_USERNAME") or getattr(
-            options, "garmin_username", None
-        )
-        garmin_password = os.getenv("GARMIN_CN_PASSWORD") or getattr(
-            options, "garmin_password", None
-        )
+        garmin_username = os.getenv("GARMIN_CN_USERNAME") or getattr(options, "garmin_username", None)
+        garmin_password = os.getenv("GARMIN_CN_PASSWORD") or getattr(options, "garmin_password", None)
     else:
-        garmin_username = os.getenv("GARMIN_COM_USERNAME") or getattr(
-            options, "garmin_username", None
-        )
-        garmin_password = os.getenv("GARMIN_COM_PASSWORD") or getattr(
-            options, "garmin_password", None
-        )
+        garmin_username = os.getenv("GARMIN_COM_USERNAME") or getattr(options, "garmin_username", None)
+        garmin_password = os.getenv("GARMIN_COM_PASSWORD") or getattr(options, "garmin_password", None)
 
     if not garmin_username or not garmin_password:
         print(f"Missing Garmin credentials for {garmin_auth_domain}")
-        print(
-            "Set environment variables: GARMIN_{DOMAIN}_USERNAME and GARMIN_{DOMAIN}_PASSWORD"
-        )
+        print("Set environment variables: GARMIN_{DOMAIN}_USERNAME and GARMIN_{DOMAIN}_PASSWORD")
         sys.exit(1)
 
     print(f"[main] Logging in to Garmin {garmin_auth_domain}...")
-    garmin_client = restore_or_login(
-        garmin_username, garmin_password, garmin_auth_domain
-    )
+    garmin_client = restore_or_login(garmin_username, garmin_password, garmin_auth_domain)
     garmin_wrapper = Garmin(garmin_client, garmin_auth_domain)
 
     last_time = 0
@@ -91,12 +78,8 @@ if __name__ == "__main__":
     if not os.path.exists(TCX_FOLDER):
         os.mkdir(TCX_FOLDER)
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--garmin-username", dest="garmin_username", help="Garmin username (email)"
-    )
-    parser.add_argument(
-        "--garmin-password", dest="garmin_password", help="Garmin password"
-    )
+    parser.add_argument("--garmin-username", dest="garmin_username", help="Garmin username (email)")
+    parser.add_argument("--garmin-password", dest="garmin_password", help="Garmin password")
     parser.add_argument(
         "--all",
         dest="all",

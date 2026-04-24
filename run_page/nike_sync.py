@@ -38,15 +38,11 @@ class Nike:
         if not activity_id:
             activity_id = "*"
         try:
-            return self.request(
-                f"activities/before_id/v3/{activity_id}?limit=30&types=run%2Cjogging&include_deleted=false"
-            )
+            return self.request(f"activities/before_id/v3/{activity_id}?limit=30&types=run%2Cjogging&include_deleted=false")
         except Exception as e:
             print(f"Error getting activities before id {activity_id}: {e}")
             time.sleep(3)
-            return self.request(
-                f"activities/before_id/v3/{activity_id}?limit=30&types=run%2Cjogging&include_deleted=false"
-            )
+            return self.request(f"activities/before_id/v3/{activity_id}?limit=30&types=run%2Cjogging&include_deleted=false")
 
     def get_activity(self, activity_id):
         try:
@@ -90,10 +86,7 @@ def run(refresh_token, is_continue_sync=False):
             # ignore NTC record
             app_id = activity["app_id"]
             activity_id = activity["id"]
-            if (
-                app_id == "com.nike.ntc.brand.ios"
-                or app_id == "com.nike.ntc.brand.droid"
-            ):
+            if app_id == "com.nike.ntc.brand.ios" or app_id == "com.nike.ntc.brand.droid":
                 logger.info(f"Ignore NTC record {activity_id}")
                 continue
 
@@ -160,11 +153,7 @@ def get_to_generate_files():
     except Exception as e:
         print(f"Error getting last time: {e}")
         last_time = 0
-    return [
-        OUTPUT_DIR + "/" + i
-        for i in os.listdir(OUTPUT_DIR)
-        if not i.startswith(".") and int(i.split(".")[0]) > last_time
-    ]
+    return [OUTPUT_DIR + "/" + i for i in os.listdir(OUTPUT_DIR) if not i.startswith(".") and int(i.split(".")[0]) > last_time]
 
 
 def generate_gpx(title, latitude_data, longitude_data, elevation_data, heart_rate_data):
@@ -218,9 +207,7 @@ def generate_gpx(title, latitude_data, longitude_data, elevation_data, heart_rat
                 "latitude": lat["value"],
                 "longitude": lon["value"],
                 "start_time": lat["start_epoch_ms"],
-                "time": datetime.fromtimestamp(
-                    lat["start_epoch_ms"] / 1000, tz=timezone.utc
-                ),
+                "time": datetime.fromtimestamp(lat["start_epoch_ms"] / 1000, tz=timezone.utc),
             }
         )
 
@@ -237,12 +224,10 @@ def generate_gpx(title, latitude_data, longitude_data, elevation_data, heart_rat
         else:
             heart_rate_num = p.pop("heart_rate")
             point = gpxpy.gpx.GPXTrackPoint(**p)
-            gpx_extension_hr = ElementTree.fromstring(
-                f"""<gpxtpx:TrackPointExtension xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
+            gpx_extension_hr = ElementTree.fromstring(f"""<gpxtpx:TrackPointExtension xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1">
                 <gpxtpx:hr>{heart_rate_num}</gpxtpx:hr>
                 </gpxtpx:TrackPointExtension>
-            """
-            )
+            """)
             point.extensions.append(gpx_extension_hr)
         gpx_segment.points.append(point)
 
@@ -289,9 +274,7 @@ def parse_activity_data(activity):
 
     title = activity["tags"].get("com.nike.name")
 
-    gpx_doc = generate_gpx(
-        title, latitude_data, longitude_data, elevation_data, heart_rate_data
-    )
+    gpx_doc = generate_gpx(title, latitude_data, longitude_data, elevation_data, heart_rate_data)
     return gpx_doc
 
 
@@ -323,9 +306,7 @@ def parse_no_gpx_data(activity):
     elapsed_time = timedelta(seconds=int(activity["active_duration_ms"] / 1000))
 
     nike_id = activity["end_epoch_ms"]
-    start_date = datetime.fromtimestamp(
-        activity["start_epoch_ms"] / 1000, tz=timezone.utc
-    )
+    start_date = datetime.fromtimestamp(activity["start_epoch_ms"] / 1000, tz=timezone.utc)
     start_date_local = adjust_time(start_date, BASE_TIMEZONE)
     end_date = datetime.fromtimestamp(activity["end_epoch_ms"] / 1000, tz=timezone.utc)
     end_date_local = adjust_time(end_date, BASE_TIMEZONE)

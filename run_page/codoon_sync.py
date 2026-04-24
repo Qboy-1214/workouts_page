@@ -111,9 +111,7 @@ def download_codoon_gpx(gpx_data, log_id):
         pass
 
 
-def formated_input(
-    run_data, run_data_label, tcx_label
-):  # load run_data from run_data_label, parse to tcx_label, return xml node
+def formated_input(run_data, run_data_label, tcx_label):  # load run_data from run_data_label, parse to tcx_label, return xml node
     fit_data = str(run_data[run_data_label])
     chile_node = ET.Element(tcx_label)
     chile_node.text = fit_data
@@ -181,14 +179,10 @@ def tcx_output(fit_array, run_data):
         activity_lap.append(formated_input(run_data, "total_calories", "Calories"))
     #       AverageCadence
     if "average_step_cadence" in run_data:
-        activity_lap.append(
-            formated_input(run_data, "average_step_cadence", "AverageCadence")
-        )
+        activity_lap.append(formated_input(run_data, "average_step_cadence", "AverageCadence"))
     #       MaximumCadence
     if "max_step_cadence" in run_data:
-        activity_lap.append(
-            formated_input(run_data, "max_step_cadence", "MaximumCadence")
-        )
+        activity_lap.append(formated_input(run_data, "max_step_cadence", "MaximumCadence"))
 
     # Track
     track = ET.Element("Track")
@@ -247,9 +241,7 @@ def tcx_output(fit_array, run_data):
     author.append(author_part)
     # write to TCX file
     try:
-        xml_str = minidom.parseString(
-            ET.tostring(training_center_database)
-        ).toprettyxml()
+        xml_str = minidom.parseString(ET.tostring(training_center_database)).toprettyxml()
         with open(TCX_FOLDER + "/" + fit_id + ".tcx", "w") as f:
             f.write(str(xml_str))
     except Exception as e:
@@ -331,9 +323,7 @@ def tcx_job(run_data):
             fit_list.append((unix_time, hr, step, latitude, longitude, elevation))
     elif fit_hrs:
         # not trackpoints but heart rates
-        print(
-            "No track points, but heart rates, might have steps " + str(run_data["id"])
-        )
+        print("No track points, but heart rates, might have steps " + str(run_data["id"]))
         for unix_time, hr in fit_hrs.items():
             # get heart rate at unix_time
             step = fit_steps.get(unix_time, None)
@@ -408,23 +398,17 @@ class CodoonAuth:
             timestamp = 0
             r.headers["authorization"] = "Basic " + basic_auth
             r.headers["timestamp"] = timestamp
-            sign = self.__get_signature(
-                r.headers["authorization"], r.path_url, timestamp=timestamp
-            )
+            sign = self.__get_signature(r.headers["authorization"], r.path_url, timestamp=timestamp)
         elif r.method == "POST":
             timestamp = int(time.time())
             r.headers["timestamp"] = timestamp
             if "refresh_token" in params:
                 r.headers["authorization"] = "Basic " + basic_auth
-                r.headers["content-type"] = (
-                    "application/x-www-form-urlencode; charset=utf-8"
-                )
+                r.headers["content-type"] = "application/x-www-form-urlencode; charset=utf-8"
             else:
                 r.headers["authorization"] = "Bearer " + self.token
                 r.headers["content-type"] = "application/json; charset=utf-8"
-            sign = self.__get_signature(
-                r.headers["authorization"], r.path_url, body=body, timestamp=timestamp
-            )
+            sign = self.__get_signature(r.headers["authorization"], r.path_url, body=body, timestamp=timestamp)
             r.body = body
 
         r.headers["signature"] = sign
@@ -469,9 +453,7 @@ class Codoon:
         self.token = login_data["access_token"]
         self.user_id = login_data["user_id"]
         self.auth.reload(token=self.token)
-        print(
-            f"your refresh_token and user_id are {str(self.refresh_token)} {str(self.user_id)}"
-        )
+        print(f"your refresh_token and user_id are {str(self.refresh_token)} {str(self.user_id)}")
 
     def get_runs_records(self, page=1):
         payload = {"limit": 500, "page": page, "user_id": self.user_id}
@@ -511,9 +493,7 @@ class Codoon:
                 "latitude": point["latitude"],
                 "longitude": point["longitude"],
                 "elevation": point["elevation"],
-                "time": adjust_time_to_utc(
-                    to_date(point["time_stamp"]), BASE_TIMEZONE
-                ).replace(tzinfo=timezone.utc),
+                "time": adjust_time_to_utc(to_date(point["time_stamp"]), BASE_TIMEZONE).replace(tzinfo=timezone.utc),
             }
             points_dict_list.append(points_dict)
         gpx = gpxpy.gpx.GPX()
@@ -552,9 +532,7 @@ class Codoon:
         dt, _, _ = dt_str.partition(".")
         return datetime.strptime(dt, "%Y-%m-%dT%H:%M:%S")
 
-    def parse_raw_data_to_namedtuple(
-        self, run_data, old_gpx_ids, with_gpx=False, with_tcx=False
-    ):
+    def parse_raw_data_to_namedtuple(self, run_data, old_gpx_ids, with_gpx=False, with_tcx=False):
         run_data = run_data["data"]
         log_id = run_data["id"]
 
@@ -572,9 +550,7 @@ class Codoon:
             trans_end_date = time.strptime(TRANS_END_DATE, "%Y-%m-%d")
             start_date = time.strptime(start_time, "%Y-%m-%dT%H:%M:%S")
             if trans_end_date > start_date:
-                latlng_data = [
-                    list(eviltransform.gcj2wgs(p[0], p[1])) for p in latlng_data
-                ]
+                latlng_data = [list(eviltransform.gcj2wgs(p[0], p[1])) for p in latlng_data]
             if run_points_data:
                 for i, p in enumerate(run_points_data):
                     p["latitude"] = latlng_data[i][0]
@@ -621,9 +597,7 @@ class Codoon:
             "start_latlng": start_latlng,
             "distance": run_data["total_length"],
             "moving_time": timedelta(seconds=run_data["total_time"]),
-            "elapsed_time": timedelta(
-                seconds=int((end_date.timestamp() - start_date.timestamp()))
-            ),
+            "elapsed_time": timedelta(seconds=int((end_date.timestamp() - start_date.timestamp()))),
             "average_speed": run_data["total_length"] / run_data["total_time"],
             "elevation_gain": elevation_gain,
             "location_country": location_country,
@@ -641,9 +615,7 @@ class Codoon:
         for i in new_run_routes:
             run_data = self.get_single_run_record(i["route_id"])
             run_data["data"]["id"] = i["log_id"]
-            track = self.parse_raw_data_to_namedtuple(
-                run_data, old_gpx_ids, with_gpx, with_tcx
-            )
+            track = self.parse_raw_data_to_namedtuple(run_data, old_gpx_ids, with_gpx, with_tcx)
             if track:
                 tracks.append(track)
         return tracks

@@ -74,9 +74,7 @@ async def main():
         "running",
     ]
     for t in target_types:
-        count = sum(
-            1 for a in com_activities if a.get("activityType", {}).get("typeKey") == t
-        )
+        count = sum(1 for a in com_activities if a.get("activityType", {}).get("typeKey") == t)
         if count > 0:
             cn_type = map_com_type_to_cn(t)
             print(f"  {t}: {count} activities -> CN: {cn_type}")
@@ -122,9 +120,7 @@ async def main():
                     cn_start = cn_act.get("startTimeGMT", "")
                     if cn_start and date_str in str(cn_start):
                         cn_act_id = cn_act.get("activityId")
-                        cn_current_type = cn_act.get("activityType", {}).get(
-                            "typeKey", ""
-                        )
+                        cn_current_type = cn_act.get("activityType", {}).get("typeKey", "")
 
                         if cn_type_key != cn_current_type:
                             # Find CN type ID
@@ -139,14 +135,10 @@ async def main():
                                     type_id,
                                     parent_id,
                                 )
-                                print(
-                                    f"  [{act_id}] {act_name}: {cn_current_type} -> {cn_type_key}"
-                                )
+                                print(f"  [{act_id}] {act_name}: {cn_current_type} -> {cn_type_key}")
                                 updated += 1
                             else:
-                                print(
-                                    f'  [{act_id}] {act_name}: CN type "{cn_type_key}" not found'
-                                )
+                                print(f'  [{act_id}] {act_name}: CN type "{cn_type_key}" not found')
                         found = True
                         break
 

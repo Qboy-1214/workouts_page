@@ -36,16 +36,12 @@ def run_keep_sync(email, password, keep_sports_data_api, with_download_gpx=False
                 print(f"Error reading JSON file {KEEP2STRAVA_BK_PATH}: {e}")
                 content = []
     old_tracks_ids = [str(a["run_id"]) for a in content]
-    _new_tracks = get_all_keep_tracks(
-        email, password, old_tracks_ids, keep_sports_data_api, True
-    )
+    _new_tracks = get_all_keep_tracks(email, password, old_tracks_ids, keep_sports_data_api, True)
     new_tracks = []
     for track in _new_tracks:
         # By default only outdoor sports have latlng as well as GPX.
         if track.start_latlng is not None:
-            file_path = namedtuple("x", "gpx_file_path")(
-                os.path.join(GPX_FOLDER, str(track.id) + ".gpx")
-            )
+            file_path = namedtuple("x", "gpx_file_path")(os.path.join(GPX_FOLDER, str(track.id) + ".gpx"))
         else:
             file_path = namedtuple("x", "gpx_file_path")(None)
         track = namedtuple("y", track._fields + file_path._fields)(*(track + file_path))
@@ -71,19 +67,13 @@ if __name__ == "__main__":
 
     options = parser.parse_args()
     for _tpye in options.sync_types:
-        assert (
-            _tpye in KEEP_SPORT_TYPES
-        ), f"{_tpye} are not supported type, please make sure that the type entered in the {KEEP_SPORT_TYPES}"
-    new_tracks = run_keep_sync(
-        options.phone_number, options.password, options.sync_types, True
-    )
+        assert _tpye in KEEP_SPORT_TYPES, f"{_tpye} are not supported type, please make sure that the type entered in the {KEEP_SPORT_TYPES}"
+    new_tracks = run_keep_sync(options.phone_number, options.password, options.sync_types, True)
 
     # to strava.
     print("Need to load all gpx files maybe take some time")
     last_time = 0
-    client = make_strava_client(
-        options.client_id, options.client_secret, options.strava_refresh_token
-    )
+    client = make_strava_client(options.client_id, options.client_secret, options.strava_refresh_token)
 
     index = 1
     print(f"Up to {len(new_tracks)} files are waiting to be uploaded")

@@ -62,9 +62,7 @@ def main():
         default="all",
         help='Filter tracks by year; "NUM", "NUM-NUM", "all" (default: all years)',
     )
-    args_parser.add_argument(
-        "--title", metavar="TITLE", type=str, help="Title to display."
-    )
+    args_parser.add_argument("--title", metavar="TITLE", type=str, help="Title to display.")
     args_parser.add_argument(
         "--athlete",
         metavar="NAME",
@@ -77,8 +75,7 @@ def main():
         metavar="FILE",
         action="append",
         default=[],
-        help="Mark track file from the GPX directory as special; use multiple times to mark "
-        "multiple tracks.",
+        help="Mark track file from the GPX directory as special; use multiple times to mark " "multiple tracks.",
     )
     types = '", "'.join(drawers.keys())
     args_parser.add_argument(
@@ -141,9 +138,7 @@ def main():
         default="metric",
         help='Distance units; "metric", "imperial" (default: "metric").',
     )
-    args_parser.add_argument(
-        "--verbose", dest="verbose", action="store_true", help="Verbose logging."
-    )
+    args_parser.add_argument("--verbose", dest="verbose", action="store_true", help="Verbose logging.")
     args_parser.add_argument("--logfile", dest="logfile", metavar="FILE", type=str)
     args_parser.add_argument(
         "--special-distance",
@@ -234,9 +229,7 @@ def main():
     if args.from_db:
         # for svg from db here if you want gpx please do not use --from-db
         # args.type == "grid" means have polyline data or not
-        tracks = loader.load_tracks_from_db(
-            SQL_FILE, args.type == "grid", args.type == "circular"
-        )
+        tracks = loader.load_tracks_from_db(SQL_FILE, args.type == "grid", args.type == "circular")
     else:
         tracks = loader.load_tracks(args.gpx_dir)
 
@@ -252,9 +245,7 @@ def main():
     is_github = args.type == "github"
 
     if not is_circular and not is_mol and not is_year_summary:
-        print(
-            f"Creating poster of type {args.type} with {len(tracks)} tracks and storing it in file {args.output}..."
-        )
+        print(f"Creating poster of type {args.type} with {len(tracks)} tracks and storing it in file {args.output}...")
     p.set_language(args.language)
     p.athlete = args.athlete
     if args.title:

@@ -97,9 +97,7 @@ class Xingzhe:
 
         self.session_id = r.cookies["sessionid"]
         self.user_id = login_data["data"]["userid"]
-        print(
-            f"your refresh_token and user_id are {str(self.session_id)} {str(self.user_id)}"
-        )
+        print(f"your refresh_token and user_id are {str(self.session_id)} {str(self.user_id)}")
 
     def get_activities_by_month(self, year, month):
         url = f"{XINGZHE_URL_DICT['ACTIVITY_LIST_URL']}user_id={self.user_id}&year={year}&month={month}"
@@ -115,14 +113,10 @@ class Xingzhe:
         now_date = datetime.now()
         for year in range(now_date.year - startYear):
             for m in range(12):
-                activities = self.get_activities_by_month(
-                    year=year + startYear, month=m + 1
-                )
+                activities = self.get_activities_by_month(year=year + startYear, month=m + 1)
                 if len(activities) == 0:
                     pass
-                ids = [
-                    {"id": i["id"], "type": TYPE_DICT[i["sport"]]} for i in activities
-                ]
+                ids = [{"id": i["id"], "type": TYPE_DICT[i["sport"]]} for i in activities]
                 results = results + ids
         for m in range(now_date.month):
             activities = self.get_activities_by_month(year=now_date.year, month=m + 1)
@@ -204,9 +198,7 @@ if __name__ == "__main__":
     print(f"{len(new_tracks)} new activities to be downloaded")
 
     async def download_new_activities():
-        await gather_with_concurrency(
-            3, [x.download_xingzhe_gpx(track) for track in new_tracks]
-        )
+        await gather_with_concurrency(3, [x.download_xingzhe_gpx(track) for track in new_tracks])
 
     loop = asyncio.get_event_loop()
     future = asyncio.ensure_future(download_new_activities())

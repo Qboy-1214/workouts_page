@@ -47,9 +47,7 @@ async def get_cn_latest_start_time(cn_client):
         return None
     # Normalize: strip sub-second precision and timezone
     normalized = re.sub(r"\.\d+(.*?)$", "", start_time).split("+")[0].split("Z")[0]
-    print(
-        f"[DEBUG] CN latest activity start time: {normalized} (original: {start_time})"
-    )
+    print(f"[DEBUG] CN latest activity start time: {normalized} (original: {start_time})")
     return normalized
 
 
@@ -66,14 +64,10 @@ async def get_com_activities_since(com_client, since_start_time, limit=100):
     """
     garmin_com = Garmin(com_client, "COM", False)
     activities = await garmin_com.get_activities(0, limit)
-    print(
-        f"[DEBUG] Fetched {len(activities)} COM activities (requested limit: {limit})"
-    )
+    print(f"[DEBUG] Fetched {len(activities)} COM activities (requested limit: {limit})")
 
     if not since_start_time:
-        print(
-            "[DEBUG] No CN latest time provided, will return all fetched COM activities"
-        )
+        print("[DEBUG] No CN latest time provided, will return all fetched COM activities")
         return activities
 
     # Filter to only activities newer than CN's latest
@@ -82,9 +76,7 @@ async def get_com_activities_since(com_client, since_start_time, limit=100):
     try:
         cutoff_dt = dt.datetime.fromisoformat(since_start_time.replace("Z", "+00:00"))
     except ValueError:
-        print(
-            f"[DEBUG] Could not parse CN latest time '{since_start_time}', returning all"
-        )
+        print(f"[DEBUG] Could not parse CN latest time '{since_start_time}', returning all")
         return activities
 
     filtered = []
@@ -94,9 +86,7 @@ async def get_com_activities_since(com_client, since_start_time, limit=100):
         if start_time:
             try:
                 # Normalize to compare timestamps
-                norm = (
-                    re.sub(r"\.\d+(.*?)$", "", start_time).split("+")[0].split("Z")[0]
-                )
+                norm = re.sub(r"\.\d+(.*?)$", "", start_time).split("+")[0].split("Z")[0]
                 act_dt = dt.datetime.fromisoformat(norm)
                 if act_dt > cutoff_dt:
                     filtered.append(act)
@@ -107,9 +97,7 @@ async def get_com_activities_since(com_client, since_start_time, limit=100):
         else:
             filtered.append(act)
 
-    print(
-        f"[DEBUG] COM: {len(filtered)} activities newer than CN latest, {skipped} skipped (older or equal)"
-    )
+    print(f"[DEBUG] COM: {len(filtered)} activities newer than CN latest, {skipped} skipped (older or equal)")
     return filtered
 
 
@@ -134,9 +122,7 @@ async def download_with_cn_filter(
         import datetime as dt
 
         try:
-            cutoff_dt = dt.datetime.fromisoformat(
-                since_start_time.replace("Z", "+00:00")
-            )
+            cutoff_dt = dt.datetime.fromisoformat(since_start_time.replace("Z", "+00:00"))
         except ValueError:
             cutoff_dt = None
 
@@ -166,11 +152,7 @@ async def download_with_cn_filter(
             start_time = act.get("startTimeGMT", "")
             if start_time and cutoff_dt:
                 try:
-                    norm = (
-                        re.sub(r"\.\d+(.*?)$", "", start_time)
-                        .split("+")[0]
-                        .split("Z")[0]
-                    )
+                    norm = re.sub(r"\.\d+(.*?)$", "", start_time).split("+")[0].split("Z")[0]
                     act_dt = dt.datetime.fromisoformat(norm)
                     if act_dt <= cutoff_dt:
                         skipped_older += 1
@@ -179,20 +161,12 @@ async def download_with_cn_filter(
                     pass  # Include if can't parse
             filtered_com.append(act)
 
-        print(
-            f"[DEBUG] COM: {len(filtered_com)} activities to process (newer than CN), {skipped_older} older skipped"
-        )
+        print(f"[DEBUG] COM: {len(filtered_com)} activities to process (newer than CN), {skipped_older} older skipped")
 
         # Extract activity IDs from filtered list
-        activity_ids = [
-            str(act.get("activityId", ""))
-            for act in filtered_com
-            if act.get("activityId")
-        ]
+        activity_ids = [str(act.get("activityId", "")) for act in filtered_com if act.get("activityId")]
         # Build activity_id -> summary dict for already-fetched summaries
-        activity_summaries_map = {
-            str(act.get("activityId", "")): act for act in filtered_com
-        }
+        activity_summaries_map = {str(act.get("activityId", "")): act for act in filtered_com}
         got_summaries_from_list = True
     else:
         activity_ids = await get_activity_id_list(garmin_com)
@@ -218,61 +192,37 @@ async def download_with_cn_filter(
             else:
                 activity_summary = await garmin_com.get_activity_summary(id)
 
-            start_time = activity_summary.get(
-                "startTimeGMT", ""
-            ) or activity_summary.get("summaryDTO", {}).get("startTimeGMT", "")
-            distance = (
-                activity_summary.get("distance", 0)
-                or activity_summary.get("summaryDTO", {}).get("distance", 0)
-                or 0
-            )
+            start_time = activity_summary.get("startTimeGMT", "") or activity_summary.get("summaryDTO", {}).get("startTimeGMT", "")
+            distance = activity_summary.get("distance", 0) or activity_summary.get("summaryDTO", {}).get("distance", 0) or 0
             activity_title = activity_summary.get("activityName", "")
-            activity_type_key = activity_summary.get("activityType", {}).get(
-                "typeKey", ""
-            ) or activity_summary.get("sportType", "")
+            activity_type_key = activity_summary.get("activityType", {}).get("typeKey", "") or activity_summary.get("sportType", "")
 
             # Debug: collect first few activities info
             if len(debug_sample) < 5:
-                debug_sample.append(
-                    (id, start_time, distance, activity_title, activity_type_key)
-                )
+                debug_sample.append((id, start_time, distance, activity_title, activity_type_key))
 
             to_generate_ids.append(id)
             to_generate_garmin_id2title[id] = activity_title
-            garmin_summary_infos_dict[id] = get_garmin_summary_infos(
-                activity_summary, id
-            )
+            garmin_summary_infos_dict[id] = get_garmin_summary_infos(activity_summary, id)
             garmin_id2type[id] = activity_type_key
             # Normalize startTimeGMT from garminconnect API as reliable fallback
             if start_time:
-                norm = (
-                    re.sub(r"\.\d+(.*?)$", "", start_time).split("+")[0].split("Z")[0]
-                )
+                norm = re.sub(r"\.\d+(.*?)$", "", start_time).split("+")[0].split("Z")[0]
                 garmin_id2start_time[id] = norm
         except Exception as e:
             print(f"Failed to get activity summary {id}: {str(e)}")
             continue
 
     # Debug: print first few activities to be downloaded
-    print(
-        f"[DEBUG] First {len(debug_sample)} COM activities to download (newer than CN):"
-    )
+    print(f"[DEBUG] First {len(debug_sample)} COM activities to download (newer than CN):")
     for uid, stime, dist, title, atype in debug_sample:
-        norm_time = (
-            re.sub(r"\.\d+(.*?)$", "", stime).split("+")[0].split("Z")[0]
-            if stime
-            else "N/A"
-        )
-        print(
-            f"  COM {uid}: time={norm_time}, dist={dist}, name={title!r}, type={atype!r}"
-        )
+        norm_time = re.sub(r"\.\d+(.*?)$", "", stime).split("+")[0].split("Z")[0] if stime else "N/A"
+        print(f"  COM {uid}: time={norm_time}, dist={dist}, name={title!r}, type={atype!r}")
 
     # Apply max_activities limit only if explicitly set (not 0)
     if max_activities > 0 and len(to_generate_ids) > max_activities:
         to_generate_ids = to_generate_ids[:max_activities]
-        print(
-            f"{len(to_generate_ids)} new activities to be downloaded (limited to {max_activities})"
-        )
+        print(f"{len(to_generate_ids)} new activities to be downloaded (limited to {max_activities})")
     else:
         print(f"{len(to_generate_ids)} new activities to be downloaded")
 
@@ -355,60 +305,40 @@ async def _search_cn_activity_by_start_time(
                 print("  [search] First 3 CN activity times:")
                 for i, act in enumerate(cn_activities[:3]):
                     raw_time = act.get("startTimeGMT", "N/A")
-                    norm_time = (
-                        re.sub(r"\.\d+(.*?)$", "", raw_time).split("+")[0].split("Z")[0]
-                    )
+                    norm_time = re.sub(r"\.\d+(.*?)$", "", raw_time).split("+")[0].split("Z")[0]
                     print(f"    [{i}] {raw_time} -> norm: {norm_time}")
 
             for act in cn_activities:
                 act_start = act.get("startTimeGMT", "")
                 if act_start:
                     # Normalize CN timestamp the same way as _extract_start_time_from_file
-                    act_start_norm = (
-                        re.sub(r"\.\d+(.*?)$", "", act_start)
-                        .split("+")[0]
-                        .split("Z")[0]
-                    )
+                    act_start_norm = re.sub(r"\.\d+(.*?)$", "", act_start).split("+")[0].split("Z")[0]
                     try:
-                        act_dt = dt.datetime.fromisoformat(
-                            act_start_norm.replace("Z", "+00:00")
-                        )
+                        act_dt = dt.datetime.fromisoformat(act_start_norm.replace("Z", "+00:00"))
                         time_diff = abs((act_dt - target_dt).total_seconds())
                         if time_diff <= time_tolerance_seconds:
                             found_id = act.get("activityId")
                             current_name = act.get("activityName", "")
-                            current_type = act.get("activityType", {}).get(
-                                "typeKey", ""
-                            ) or act.get("activityType", {}).get("typeGui", "")
+                            current_type = act.get("activityType", {}).get("typeKey", "") or act.get("activityType", {}).get("typeGui", "")
                             if attempt > 0:
-                                print(
-                                    f"  [retry] Found on attempt {attempt}: CN activity {found_id} for start {start_time_iso} (diff: {time_diff:.1f}s)"
-                                )
+                                print(f"  [retry] Found on attempt {attempt}: CN activity {found_id} for start {start_time_iso} (diff: {time_diff:.1f}s)")
                             elif time_diff > 0:
-                                print(
-                                    f"  [match] Fuzzy match: CN activity {found_id}, time diff: {time_diff:.1f}s (tolerance: ±{time_tolerance_seconds}s)"
-                                )
+                                print(f"  [match] Fuzzy match: CN activity {found_id}, time diff: {time_diff:.1f}s (tolerance: ±{time_tolerance_seconds}s)")
                             return found_id, current_name, current_type
                     except ValueError:
                         # Fallback to exact match if parsing fails
                         if act_start_norm == start_time_iso:
                             found_id = act.get("activityId")
                             current_name = act.get("activityName", "")
-                            current_type = act.get("activityType", {}).get(
-                                "typeKey", ""
-                            ) or act.get("activityType", {}).get("typeGui", "")
+                            current_type = act.get("activityType", {}).get("typeKey", "") or act.get("activityType", {}).get("typeGui", "")
                             if attempt > 0:
-                                print(
-                                    f"  [retry] Found on attempt {attempt} (exact match): CN activity {found_id} for start {start_time_iso}"
-                                )
+                                print(f"  [retry] Found on attempt {attempt} (exact match): CN activity {found_id} for start {start_time_iso}")
                             return found_id, current_name, current_type
 
     return None, None, None
 
 
-async def upload_activities_to_garmin_cn(
-    garmin_cn_wrapper, files, id2title, id2type, id2start_time=None, time_tolerance=180
-):
+async def upload_activities_to_garmin_cn(garmin_cn_wrapper, files, id2title, id2type, id2start_time=None, time_tolerance=180):
     """Upload activities to Garmin CN and update name/type (match by start time with fuzzy matching).
 
     Args:
@@ -419,18 +349,14 @@ async def upload_activities_to_garmin_cn(
         id2start_time: Dict mapping COM activity ID -> start time (optional fallback)
         time_tolerance: Time tolerance in seconds for matching activities (default: 180 = ±3 minutes)
     """
-    print(
-        f"[upload_activities_to_garmin_cn] Starting upload to Garmin CN, auth domain: {garmin_cn_wrapper.auth_domain}"
-    )
+    print(f"[upload_activities_to_garmin_cn] Starting upload to Garmin CN, auth domain: {garmin_cn_wrapper.auth_domain}")
     await garmin_cn_wrapper.upload_activities_files(files)
     print("[upload_activities_to_garmin_cn] Upload done. Updating name/type...")
 
     # Wait for Garmin servers to process uploads before searching for activities
     import time as time_module
 
-    print(
-        "[upload_activities_to_garmin_cn] Waiting 5s for Garmin to process uploads..."
-    )
+    print("[upload_activities_to_garmin_cn] Waiting 5s for Garmin to process uploads...")
     time_module.sleep(5)
 
     # Update name and type for each uploaded activity
@@ -458,40 +384,28 @@ async def upload_activities_to_garmin_cn(
             start_time_iso = _extract_start_time_from_file(filepath)
             if not start_time_iso and id2start_time:
                 com_id_from_filename = os.path.splitext(filename)[0]
-                print(
-                    f"  [debug] Looking up start time for ID '{com_id_from_filename}' in id2start_time (keys: {list(id2start_time.keys())[:5]}...)"
-                )
+                print(f"  [debug] Looking up start time for ID '{com_id_from_filename}' in id2start_time (keys: {list(id2start_time.keys())[:5]}...)")
                 start_time_iso = id2start_time.get(com_id_from_filename)
                 if start_time_iso:
-                    print(
-                        f"  [update] Using API start time as fallback for {filename}: {start_time_iso}"
-                    )
+                    print(f"  [update] Using API start time as fallback for {filename}: {start_time_iso}")
             if not start_time_iso:
-                print(
-                    f"  [update] Could not extract start time for {filename}, skipping name/type update"
-                )
+                print(f"  [update] Could not extract start time for {filename}, skipping name/type update")
                 continue
 
             # Search CN activities with retry and fuzzy time matching
-            found_cn_id, current_cn_name, current_cn_type = (
-                await _search_cn_activity_by_start_time(
-                    garmin_cn_wrapper,
-                    start_time_iso,
-                    max_retries=3,
-                    retry_delay=5,
-                    time_tolerance_seconds=time_tolerance,
-                )
+            found_cn_id, current_cn_name, current_cn_type = await _search_cn_activity_by_start_time(
+                garmin_cn_wrapper,
+                start_time_iso,
+                max_retries=3,
+                retry_delay=5,
+                time_tolerance_seconds=time_tolerance,
             )
 
             if not found_cn_id:
-                print(
-                    f"  [update] Could not find CN activity for {filename} (start: {start_time_iso}) after retries, skipping"
-                )
+                print(f"  [update] Could not find CN activity for {filename} (start: {start_time_iso}) after retries, skipping")
                 continue
 
-            print(
-                f"  [update] CN activity {found_cn_id}: name='{current_cn_name}' -> '{activity_name}', type='{current_cn_type}' -> '{cn_type_key}'"
-            )
+            print(f"  [update] CN activity {found_cn_id}: name='{current_cn_name}' -> '{activity_name}', type='{current_cn_type}' -> '{cn_type_key}'")
 
             # Update name if different
             if activity_name and activity_name != current_cn_name:
@@ -508,9 +422,7 @@ async def upload_activities_to_garmin_cn(
             # Update type if different
             if cn_type_key and cn_type_key != current_cn_type:
                 try:
-                    types = await asyncio.to_thread(
-                        garmin_cn_wrapper._client.get_activity_types
-                    )
+                    types = await asyncio.to_thread(garmin_cn_wrapper._client.get_activity_types)
                     type_id = None
                     parent_type_id = None
                     for t in types:
@@ -529,9 +441,7 @@ async def upload_activities_to_garmin_cn(
                         )
                         print(f"    Updated type to: '{cn_type_key}'")
                     else:
-                        print(
-                            f"    CN type '{cn_type_key}' not found in available types"
-                        )
+                        print(f"    CN type '{cn_type_key}' not found in available types")
                 except Exception as type_err:
                     print(f"    Could not update type: {type_err}")
 
@@ -560,17 +470,11 @@ def _extract_start_time_from_file(filepath):
             # FIT epoch: 631065600000 ms since Jan 1, 1989 00:00:00 UTC
             # We search for uint32 values that fall in a reasonable timestamp range
             FIT_EPOCH_MS = 631065600000
-            min_ts_ms = int(
-                dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc).timestamp() * 1000
-            )
-            max_ts_ms = int(
-                dt.datetime(2030, 12, 31, tzinfo=dt.timezone.utc).timestamp() * 1000
-            )
+            min_ts_ms = int(dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc).timestamp() * 1000)
+            max_ts_ms = int(dt.datetime(2030, 12, 31, tzinfo=dt.timezone.utc).timestamp() * 1000)
 
             # Search for uint32 values that could be FIT ms timestamps
-            data_words = struct.unpack(
-                f"<{len(data)//4}I", data[: (len(data) // 4) * 4]
-            )
+            data_words = struct.unpack(f"<{len(data)//4}I", data[: (len(data) // 4) * 4])
             candidates = []
             for val in data_words:
                 if min_ts_ms <= val <= max_ts_ms:
@@ -582,9 +486,7 @@ def _extract_start_time_from_file(filepath):
                 earliest = min(candidates)
                 return earliest.strftime("%Y-%m-%dT%H:%M:%S")
             else:
-                print(
-                    f"  [extract] FIT: no valid timestamps in range (file size: {len(data)} bytes)"
-                )
+                print(f"  [extract] FIT: no valid timestamps in range (file size: {len(data)} bytes)")
                 return None
 
         elif ext == ".tcx":
@@ -602,14 +504,10 @@ def _extract_start_time_from_file(filepath):
                     if tag == "Id" and elem.text:
                         time_str = elem.text.strip()
                         try:
-                            dt_obj = dt.datetime.fromisoformat(
-                                time_str.replace("Z", "+00:00")
-                            )
+                            dt_obj = dt.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
                             found_times.append(dt_obj.strftime("%Y-%m-%dT%H:%M:%S"))
                         except ValueError:
-                            print(
-                                f"  [extract] TCX: could not parse <Id>: '{time_str}'"
-                            )
+                            print(f"  [extract] TCX: could not parse <Id>: '{time_str}'")
                 if found_times:
                     return found_times[0]
                 else:
@@ -619,15 +517,11 @@ def _extract_start_time_from_file(filepath):
                         if tag == "Time" and elem.text:
                             time_str = elem.text.strip()
                             try:
-                                dt_obj = dt.datetime.fromisoformat(
-                                    time_str.replace("Z", "+00:00")
-                                )
+                                dt_obj = dt.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
                                 return dt_obj.strftime("%Y-%m-%dT%H:%M:%S")
                             except ValueError:
                                 pass
-                    print(
-                        f"  [extract] TCX: no <Id> or <Time> element found in {filepath}"
-                    )
+                    print(f"  [extract] TCX: no <Id> or <Time> element found in {filepath}")
                     return None
             except Exception as e:
                 print(f"  [extract] TCX parse error for {filepath}: {e}")
@@ -646,9 +540,7 @@ def _extract_start_time_from_file(filepath):
                     if tag == "time" and elem.text:
                         time_str = elem.text.strip()
                         try:
-                            dt_obj = dt.datetime.fromisoformat(
-                                time_str.replace("Z", "+00:00")
-                            )
+                            dt_obj = dt.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
                             return dt_obj.strftime("%Y-%m-%dT%H:%M:%S")
                         except ValueError:
                             pass
@@ -669,12 +561,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Sync Garmin COM -> CN")
     parser.add_argument("--cn-username", dest="cn_username", help="Garmin CN username")
     parser.add_argument("--cn-password", dest="cn_password", help="Garmin CN password")
-    parser.add_argument(
-        "--com-username", dest="com_username", help="Garmin COM username"
-    )
-    parser.add_argument(
-        "--com-password", dest="com_password", help="Garmin COM password"
-    )
+    parser.add_argument("--com-username", dest="com_username", help="Garmin COM username")
+    parser.add_argument("--com-password", dest="com_password", help="Garmin COM password")
     parser.add_argument(
         "--only-run",
         dest="only_run",
@@ -708,9 +596,7 @@ if __name__ == "__main__":
     com_password = os.getenv("GARMIN_COM_PASSWORD") or options.com_password
 
     print("[main] GARMIN_COM_TO_CN_SYNC START - syncing from COM to CN")
-    print(
-        f"[main] CN credentials set: {bool(cn_username)}, COM credentials set: {bool(com_username)}"
-    )
+    print(f"[main] CN credentials set: {bool(cn_username)}, COM credentials set: {bool(com_username)}")
 
     if not cn_username or not cn_password:
         print("Missing CN credentials: please provide --cn-username/--cn-password")
@@ -719,9 +605,7 @@ if __name__ == "__main__":
 
     if not com_username or not com_password:
         print("Missing COM credentials: please provide --com-username/--com-password")
-        print(
-            "Or set environment variables: GARMIN_COM_USERNAME and GARMIN_COM_PASSWORD"
-        )
+        print("Or set environment variables: GARMIN_COM_USERNAME and GARMIN_COM_PASSWORD")
         sys.exit(1)
 
     folder = FIT_FOLDER
@@ -745,9 +629,7 @@ if __name__ == "__main__":
     # Step 2: Get CN latest activity start time (for time-window filtering)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    cn_latest_start_time = loop.run_until_complete(
-        get_cn_latest_start_time(garmin_cn_client)
-    )
+    cn_latest_start_time = loop.run_until_complete(get_cn_latest_start_time(garmin_cn_client))
     print(f"CN latest activity start time: {cn_latest_start_time or 'None'}")
 
     # Step 3: Login to Garmin COM and download new activities
@@ -841,8 +723,6 @@ if __name__ == "__main__":
     # The CN activities will be synced separately via garmin_sync_cn.py
     # If user needs local tracking, they can run strava_to_garmin_sync.py instead
     print("Skipping full activities.json regeneration for COM->CN sync.")
-    print(
-        "Run garmin_sync.py or strava_to_garmin_sync.py separately for local tracking."
-    )
+    print("Run garmin_sync.py or strava_to_garmin_sync.py separately for local tracking.")
 
     print("\nSync completed!")

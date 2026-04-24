@@ -29,11 +29,7 @@ def get_to_generate_files(last_time):
                 # if gpx file has no start time we ignore it.
                 if gpx.get_time_bounds()[0]:
                     gpx_files.append((gpx, file_path))
-    gpx_files_dict = {
-        int(i[0].get_time_bounds()[0].timestamp()): i[1]
-        for i in gpx_files
-        if int(i[0].get_time_bounds()[0].timestamp()) > last_time
-    }
+    gpx_files_dict = {int(i[0].get_time_bounds()[0].timestamp()): i[1] for i in gpx_files if int(i[0].get_time_bounds()[0].timestamp()) > last_time}
     return sorted(list(gpx_files_dict.keys())), gpx_files_dict
 
 
@@ -54,9 +50,7 @@ if __name__ == "__main__":
     # upload new tcx to strava
     print("Need to load all gpx files maybe take some time")
     last_time = 0
-    client = make_strava_client(
-        options.client_id, options.client_secret, options.strava_refresh_token
-    )
+    client = make_strava_client(options.client_id, options.client_secret, options.strava_refresh_token)
     if not options.all:
         last_time = get_strava_last_time(client, is_milliseconds=False)
     to_upload_time_list, to_upload_dict = get_to_generate_files(last_time)
@@ -79,6 +73,4 @@ if __name__ == "__main__":
         time.sleep(1)
 
     time.sleep(10)
-    run_strava_sync(
-        options.client_id, options.client_secret, options.strava_refresh_token
-    )
+    run_strava_sync(options.client_id, options.client_secret, options.strava_refresh_token)
