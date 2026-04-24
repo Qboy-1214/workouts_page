@@ -217,7 +217,7 @@ async def download_with_cn_filter(
                 activity_summary = activity_summaries_map[id]
             else:
                 activity_summary = await garmin_com.get_activity_summary(id)
-            
+
             start_time = activity_summary.get(
                 "startTimeGMT", ""
             ) or activity_summary.get("summaryDTO", {}).get("startTimeGMT", "")
@@ -233,7 +233,9 @@ async def download_with_cn_filter(
 
             # Debug: collect first few activities info
             if len(debug_sample) < 5:
-                debug_sample.append((id, start_time, distance, activity_title, activity_type_key))
+                debug_sample.append(
+                    (id, start_time, distance, activity_title, activity_type_key)
+                )
 
             to_generate_ids.append(id)
             to_generate_garmin_id2title[id] = activity_title
@@ -252,10 +254,18 @@ async def download_with_cn_filter(
             continue
 
     # Debug: print first few activities to be downloaded
-    print(f"[DEBUG] First {len(debug_sample)} COM activities to download (newer than CN):")
+    print(
+        f"[DEBUG] First {len(debug_sample)} COM activities to download (newer than CN):"
+    )
     for uid, stime, dist, title, atype in debug_sample:
-        norm_time = re.sub(r"\.\d+(.*?)$", "", stime).split("+")[0].split("Z")[0] if stime else "N/A"
-        print(f"  COM {uid}: time={norm_time}, dist={dist}, name={title!r}, type={atype!r}")
+        norm_time = (
+            re.sub(r"\.\d+(.*?)$", "", stime).split("+")[0].split("Z")[0]
+            if stime
+            else "N/A"
+        )
+        print(
+            f"  COM {uid}: time={norm_time}, dist={dist}, name={title!r}, type={atype!r}"
+        )
 
     # Apply max_activities limit only if explicitly set (not 0)
     if max_activities > 0 and len(to_generate_ids) > max_activities:
@@ -290,7 +300,11 @@ async def download_with_cn_filter(
 
 
 async def _search_cn_activity_by_start_time(
-    garmin_cn_wrapper, start_time_iso, max_retries=3, retry_delay=5, time_tolerance_seconds=180
+    garmin_cn_wrapper,
+    start_time_iso,
+    max_retries=3,
+    retry_delay=5,
+    time_tolerance_seconds=180,
 ):
     """Search CN for an activity by start time, with retry logic and fuzzy time matching.
 
@@ -341,8 +355,10 @@ async def _search_cn_activity_by_start_time(
                 print(f"  [search] Target time: {start_time_iso}")
                 print(f"  [search] First 3 CN activity times:")
                 for i, act in enumerate(cn_activities[:3]):
-                    raw_time = act.get('startTimeGMT', 'N/A')
-                    norm_time = re.sub(r'\.\d+(.*?)$', '', raw_time).split('+')[0].split('Z')[0]
+                    raw_time = act.get("startTimeGMT", "N/A")
+                    norm_time = (
+                        re.sub(r"\.\d+(.*?)$", "", raw_time).split("+")[0].split("Z")[0]
+                    )
                     print(f"    [{i}] {raw_time} -> norm: {norm_time}")
 
             for act in cn_activities:
@@ -355,7 +371,9 @@ async def _search_cn_activity_by_start_time(
                         .split("Z")[0]
                     )
                     try:
-                        act_dt = dt.datetime.fromisoformat(act_start_norm.replace("Z", "+00:00"))
+                        act_dt = dt.datetime.fromisoformat(
+                            act_start_norm.replace("Z", "+00:00")
+                        )
                         time_diff = abs((act_dt - target_dt).total_seconds())
                         if time_diff <= time_tolerance_seconds:
                             found_id = act.get("activityId")
@@ -442,7 +460,9 @@ async def upload_activities_to_garmin_cn(
             start_time_iso = _extract_start_time_from_file(filepath)
             if not start_time_iso and id2start_time:
                 com_id_from_filename = os.path.splitext(filename)[0]
-                print(f"  [debug] Looking up start time for ID '{com_id_from_filename}' in id2start_time (keys: {list(id2start_time.keys())[:5]}...)")
+                print(
+                    f"  [debug] Looking up start time for ID '{com_id_from_filename}' in id2start_time (keys: {list(id2start_time.keys())[:5]}...)"
+                )
                 start_time_iso = id2start_time.get(com_id_from_filename)
                 if start_time_iso:
                     print(
