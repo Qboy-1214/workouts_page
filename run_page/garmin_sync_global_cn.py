@@ -113,84 +113,19 @@ async def get_com_activities_since(com_client, since_start_time, limit=100):
     return filtered
 
 
-async def get_cn_existing_timestamps(cn_client):
-    """Get activity timestamps that already exist in Garmin CN to avoid duplicates.
-
-    NOTE: COM and CN have different activity IDs for the same activity.
-    We use startTimeGMT + distance to match activities across platforms.
-
-    Returns a dict: normalized_time -> list of (distance, activityId)
-    This PRESERVES ALL activities including those with duplicate timestamps,
-    unlike a set which would lose entries.
-    """
-    garmin_cn = Garmin(cn_client, "CN", False)
-    # Use dict to store ALL CN activities, keyed by normalized timestamp
-    # Value is a list of (distance, activityId) to handle multiple activities with same timestamp
-    cn_ts_dict = {}
-    total_fetched = 0
-
-    # Get all CN activities in batches
-    start = 0
-    limit = 100
-    while True:
-        activities = await garmin_cn.get_activities(start, limit)
-        if not activities:
-            print(
-                f"[DEBUG] CN activities batch empty at start={start}, total fetched: {total_fetched}"
-            )
-            break
-        total_fetched += len(activities)
-        for act in activities:
-            # Use startTimeGMT + distance as unique identifier
-            start_time = act.get("startTimeGMT", "")
-            distance = act.get("distance", 0) or 0
-            if start_time:
-                # Normalize: strip sub-second precision and timezone
-                import re as _re
-
-                normalized_time = (
-                    _re.sub(r"\.\d+(.*?)$", "", start_time).split("+")[0].split("Z")[0]
-                )
-                if normalized_time not in cn_ts_dict:
-                    cn_ts_dict[normalized_time] = []
-                cn_ts_dict[normalized_time].append((distance, act.get("activityId")))
-        
-        if len(activities) < limit:
-            break
-        start += limit
-
-    print(
-        f"[DEBUG] get_cn_existing_timestamps: Found {len(cn_ts_dict)} unique timestamps ({total_fetched} total entries) in Garmin CN"
-    )
-
-    # Debug: print first few entries
-    if cn_ts_dict:
-        sample = list(cn_ts_dict.items())[:3]
-        print(f"[DEBUG] Sample CN timestamps: {[(t, lst[:2]) for t, lst in sample]}")
-
-    return cn_ts_dict
-
-
 async def download_with_cn_filter(
     com_client,
-    cn_existing_timestamps,
     is_only_running,
     folder,
     file_type,
     max_activities=10000,
     since_start_time=None,
 ):
-    """Download activities from COM, filtering out those that exist in CN.
+    """Download activities from COM.
 
     If since_start_time is provided, only fetch COM activities newer than that time.
     """
     garmin_com = Garmin(com_client, "COM", is_only_running)
-
-    # Build CN dedup set for fast lookup
-    cn_dedup_set = set()
-    for normalized_time, entries in cn_existing_timestamps.items():
-        for dist, cid in entries:
-            cn_dedup_set.add(normalized_time)
 
     # Get COM activities: if since_start_time given, fetch only recent batch (time-filtered)
     # Otherwise, get all (existing behavior)
@@ -264,15 +199,16 @@ async def download_with_cn_filter(
         activity_summaries_map = {}
         got_summaries_from_list = False
 
-    # Filter out activities that already exist in CN (match by time + distance)
+    # Build id2title, id2type, id2start_time from COM activities
+    # No need for CN dedup since we already filtered by time (only newer than CN latest)
     to_generate_ids = []
     to_generate_garmin_id2title = {}
     garmin_summary_infos_dict = {}
     garmin_id2type = {}  # Collect activity type for post-upload CN update
     garmin_id2start_time = {}  # Store normalized startTimeGMT from garminconnect API
 
-    filtered_count = 0  # Track how many activities were filtered (already exist in CN)
-    unmatched_debug = []  # First few unmatched COM activities for debugging
+    # Debug: show first few activities to be downloaded
+    debug_sample = []
 
     for id in activity_ids:
         try:
@@ -281,6 +217,7 @@ async def download_with_cn_filter(
                 activity_summary = activity_summaries_map[id]
             else:
                 activity_summary = await garmin_com.get_activity_summary(id)
+            
             start_time = activity_summary.get(
                 "startTimeGMT", ""
             ) or activity_summary.get("summaryDTO", {}).get("startTimeGMT", "")
@@ -289,36 +226,15 @@ async def download_with_cn_filter(
                 or activity_summary.get("summaryDTO", {}).get("distance", 0)
                 or 0
             )
-
-            # Check if this activity already exists in CN (by time + distance with tolerance)
-            # Use distance tolerance of 1.0 meters to handle floating point precision differences
-            # between COM and CN (GPS distance can vary slightly due to different calculation methods)
-            exists_in_cn = False
-            matched_cn_time = None
-            if start_time:
-                # Normalize COM timestamp once
-                com_normalized = (
-                    re.sub(r"\.\d+(.*?)$", "", start_time).split("+")[0].split("Z")[0]
-                )
-                # Look up in CN dict: all CN entries with this normalized timestamp
-                cn_entries = cn_existing_timestamps.get(com_normalized, [])
-                for cn_dist, cn_id in cn_entries:
-                    dist_diff = abs(cn_dist - distance)
-                    if dist_diff < 1.0 or (cn_dist == 0 or distance == 0):
-                        exists_in_cn = True
-                        matched_cn_time = com_normalized
-                        break
-                # Debug: track first few unmatched
-                if not exists_in_cn and len(unmatched_debug) < 5:
-                    unmatched_debug.append((id, com_normalized, distance, cn_entries))
-            if exists_in_cn:
-                filtered_count += 1
-                continue
-
             activity_title = activity_summary.get("activityName", "")
             activity_type_key = activity_summary.get("activityType", {}).get(
                 "typeKey", ""
             ) or activity_summary.get("sportType", "")
+
+            # Debug: collect first few activities info
+            if len(debug_sample) < 5:
+                debug_sample.append((id, start_time, distance, activity_title, activity_type_key))
+
             to_generate_ids.append(id)
             to_generate_garmin_id2title[id] = activity_title
             garmin_summary_infos_dict[id] = get_garmin_summary_infos(
@@ -335,20 +251,11 @@ async def download_with_cn_filter(
             print(f"Failed to get activity summary {id}: {str(e)}")
             continue
 
-    print(
-        f"[DEBUG] Filtered out {filtered_count} activities that already exist in CN (out of {len(activity_ids)} total)"
-    )
-    print(
-        f"[DEBUG] CN unique timestamps: {len(cn_existing_timestamps)}, COM total: {len(activity_ids)}"
-    )
-    if unmatched_debug:
-        print(
-            f"[DEBUG] First {len(unmatched_debug)} UNMATCHED COM activities (not in CN):"
-        )
-        for uid, utime, udist, uentries in unmatched_debug:
-            print(
-                f"  COM {uid}: time={utime}, dist={udist} | CN entries for this time: {uentries}"
-            )
+    # Debug: print first few activities to be downloaded
+    print(f"[DEBUG] First {len(debug_sample)} COM activities to download (newer than CN):")
+    for uid, stime, dist, title, atype in debug_sample:
+        norm_time = re.sub(r"\.\d+(.*?)$", "", stime).split("+")[0].split("Z")[0] if stime else "N/A"
+        print(f"  COM {uid}: time={norm_time}, dist={dist}, name={title!r}, type={atype!r}")
 
     # Apply max_activities limit only if explicitly set (not 0)
     if max_activities > 0 and len(to_generate_ids) > max_activities:
@@ -825,12 +732,6 @@ if __name__ == "__main__":
     )
     print(f"CN latest activity start time: {cn_latest_start_time or 'None'}")
 
-    # Step 3: Get existing activity timestamps from Garmin CN (for dedup by time+distance)
-    cn_existing_timestamps = loop.run_until_complete(
-        get_cn_existing_timestamps(garmin_cn_client)
-    )
-    print(f"Garmin CN already has {len(cn_existing_timestamps)} activities (for dedup)")
-
     # Step 3: Login to Garmin COM and download new activities
     garmin_com_client = None
     try:
@@ -845,10 +746,10 @@ if __name__ == "__main__":
         print("[main] Cannot proceed without COM client. Exiting.")
         sys.exit(1)
 
+    # Step 4: Download COM activities newer than CN latest
     future = asyncio.ensure_future(
         download_with_cn_filter(
             garmin_com_client,
-            cn_existing_timestamps,
             is_only_running,
             folder,
             "tcx",  # Use TCX format for reliable time extraction from <Id> field
@@ -859,7 +760,7 @@ if __name__ == "__main__":
     loop.run_until_complete(future)
     new_ids, id2title, id2type, id2start_time = future.result()
 
-    # Step 4: Find files to upload
+    # Step 5: Find files to upload
     to_upload_files = []
     for i in new_ids:
         fit_path = os.path.join(FIT_FOLDER, f"{i}.fit")
@@ -887,7 +788,7 @@ if __name__ == "__main__":
     print(f"\nFiles to upload to CN: {len(to_upload_files)}")
 
     if to_upload_files:
-        # Step 5: Upload to Garmin CN using wrapper pattern from strava_to_garmin_sync.py
+        # Step 6: Upload to Garmin CN using wrapper pattern from strava_to_garmin_sync.py
         print("Uploading activities to Garmin CN...")
         garmin_cn_wrapper = Garmin(garmin_cn_client, "CN", is_only_running)
 
@@ -913,7 +814,7 @@ if __name__ == "__main__":
     else:
         print("No new activities to upload.")
 
-    # Step 6: Generate track from ONLY the newly downloaded files
+    # Step 7: Generate track from ONLY the newly downloaded files
     # NOTE: Do NOT process all historical files - that causes thousands of log lines
     # Only process the files for activities we just downloaded
     print(f"Processing {len(new_ids)} newly synced activities...")
