@@ -522,8 +522,11 @@ async def upload_activities_to_garmin_cn(
                 print(f"  [update] Could not parse activity ID from {filename}")
                 continue
 
-            activity_name = id2title.get(com_id, "")
-            com_type_key = id2type.get(com_id, "")
+            # DEBUG: log id2title keys and com_id_str
+            print(f"  [update] DEBUG: com_id_str={com_id_str!r}, id2title keys sample={list(id2title.keys())[:3]}")
+            activity_name = id2title.get(com_id_str, "")
+            com_type_key = id2type.get(com_id_str, "")
+            print(f"  [update] DEBUG: activity_name={activity_name!r}, com_type_key={com_type_key!r}")
             cn_type_key = map_com_type_to_cn(com_type_key)
 
             # Find the newly uploaded activity in CN by start time
