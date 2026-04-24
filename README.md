@@ -94,7 +94,95 @@ env:
 | `coros` | Sync from Coros | COROS_ACCOUNT, COROS_PASSWORD |
 | `nike` | Sync from Nike | NIKE_REFRESH_TOKEN |
 | `strava_to_garmin` | Download from Strava and upload to Garmin International | STRAVA_*, GARMIN_COM_*, STRAVA_JWT |
-| `garmin_cn_global` | Sync Garmin China → Garmin International (after strava_to_garmin) | GARMIN_CN_*, GARMIN_COM_* |
+| `garmin_cn_global` | Sync Garmin International → Garmin China (after strava_to_garmin) | GARMIN_CN_*, GARMIN_COM_* |
+
+---
+
+## Sync Flow Details
+
+### Complete Sync Chain: Strava → Garmin International → Garmin China
+
+```
+Strava ──────────────────► Garmin International (COM)
+                                 │
+                                 ▼
+                          Garmin China (CN)
+```
+
+### 1. Strava → Garmin International (`strava_to_garmin_sync.py`)
+
+#### Libraries Used
+
+| Library | Purpose |
+|---------|---------|
+| `stravalib` | Get activity list via OAuth |
+| `stravaweblib` | Download activity files (TCX/FIT) using JWT or cookie |
+| `garminconnect` | Upload activities to Garmin International |
+
+#### Configuration
+
+| Environment Variable | Description |
+|---------------------|-------------|
+| `STRAVA_CLIENT_ID` | Strava App Client ID |
+| `STRAVA_CLIENT_SECRET` | Strava App Client Secret |
+| `STRAVA_CLIENT_REFRESH_TOKEN` | Strava Refresh Token |
+| `GARMIN_COM_USERNAME` | Garmin International username/email |
+| `GARMIN_COM_PASSWORD` | Garmin International password |
+| `STRAVA_JWT` | Strava JWT token or `_strava4_session` cookie |
+
+#### How It Works
+
+1. Use `stravalib` OAuth to get Strava activity list
+2. Get the latest activity time from Garmin International as filter
+3. Use `stravaweblib` to download TCX files for new activities
+4. Use `garminconnect` to upload TCX files to Garmin International
+5. Automatically set the same sport type and activity name as Strava
+
+#### Run Command
+
+```bash
+python run_page/strava_to_garmin_sync.py \
+  $STRAVA_CLIENT_ID \
+  $STRAVA_CLIENT_SECRET \
+  $STRAVA_CLIENT_REFRESH_TOKEN \
+  "" "" \
+  $STRAVA_JWT
+```
+
+### 2. Garmin International → Garmin China (`garmin_sync_global_cn.py`)
+
+#### Libraries Used
+
+| Library | Purpose |
+|---------|---------|
+| `garminconnect` | Login to Garmin International and download activities |
+| `garth` | Login to Garmin China and upload activities |
+
+#### Configuration
+
+| Environment Variable | Description |
+|---------------------|-------------|
+| `GARMIN_COM_USERNAME` | Garmin International username/email |
+| `GARMIN_COM_PASSWORD` | Garmin International password |
+| `GARMIN_CN_USERNAME` | Garmin China username/email |
+| `GARMIN_CN_PASSWORD` | Garmin China password |
+
+#### How It Works
+
+1. Login to Garmin China, get the latest activity time
+2. Login to Garmin International, download activities not yet in China
+3. Upload new activities to Garmin China
+4. Match by activity start time, automatically update activity name and type in China
+
+#### Run Command
+
+```bash
+python run_page/garmin_sync_global_cn.py
+```
+
+#### Sport Type Mapping
+
+Sport types are mapped between International and China via `map_com_type_to_cn()` function in `activity_type_map.py`.
 
 ---
 

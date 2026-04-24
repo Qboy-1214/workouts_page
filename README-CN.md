@@ -95,6 +95,95 @@ env:
 | `nike` | 从 Nike 同步 | NIKE_REFRESH_TOKEN |
 | `strava_to_garmin` | 从 Strava 下载并上传到 Garmin | STRAVA_*, GARMIN_*, STRAVA_JWT |
 | `garmin_to_strava` | 从 Garmin 上传到 Strava | STRAVA_*, GARMIN_* |
+| `garmin_cn_global` | 从 Garmin 国际版同步到中国版（用于 strava_to_garmin 之后） | GARMIN_CN_*, GARMIN_COM_* |
+
+---
+
+## 同步流程详解
+
+### 完整同步链路：Strava → Garmin 国际版 → Garmin 中国版
+
+```
+Strava ──────────────────► Garmin 国际版 (COM)
+                                 │
+                                 ▼
+                          Garmin 中国版 (CN)
+```
+
+### 1. Strava → Garmin 国际版 (`strava_to_garmin_sync.py`)
+
+#### 使用的库
+
+| 库 | 用途 |
+|----|------|
+| `stravalib` | 通过 OAuth 获取活动列表和元数据 |
+| `stravaweblib` | 使用 JWT 或 cookie 下载活动原始文件 (TCX/FIT) |
+| `garminconnect` | 上传活动到 Garmin 国际版 |
+
+#### 配置
+
+| 环境变量 | 说明 |
+|----------|------|
+| `STRAVA_CLIENT_ID` | Strava 应用 Client ID |
+| `STRAVA_CLIENT_SECRET` | Strava 应用 Client Secret |
+| `STRAVA_CLIENT_REFRESH_TOKEN` | Strava 刷新令牌 |
+| `GARMIN_COM_USERNAME` | Garmin 国际版用户名/邮箱 |
+| `GARMIN_COM_PASSWORD` | Garmin 国际版密码 |
+| `STRAVA_JWT` | Strava JWT 令牌或 `_strava4_session` cookie |
+
+#### 工作原理
+
+1. 使用 `stravalib` OAuth 获取 Strava 活动列表
+2. 获取 Garmin 国际版最新活动时间作为筛选条件
+3. 使用 `stravaweblib` 下载新活动的 TCX 文件
+4. 使用 `garminconnect` 上传 TCX 文件到 Garmin 国际版
+5. 自动设置与 Strava 相同的运动类型和活动名称
+
+#### 运行命令
+
+```bash
+python run_page/strava_to_garmin_sync.py \
+  $STRAVA_CLIENT_ID \
+  $STRAVA_CLIENT_SECRET \
+  $STRAVA_CLIENT_REFRESH_TOKEN \
+  "" "" \
+  $STRAVA_JWT
+```
+
+### 2. Garmin 国际版 → Garmin 中国版 (`garmin_sync_global_cn.py`)
+
+#### 使用的库
+
+| 库 | 用途 |
+|----|------|
+| `garminconnect` | 登录 Garmin 国际版并下载活动 |
+| `garth` | 登录 Garmin 中国版并上传活动 |
+
+#### 配置
+
+| 环境变量 | 说明 |
+|----------|------|
+| `GARMIN_COM_USERNAME` | Garmin 国际版用户名/邮箱 |
+| `GARMIN_COM_PASSWORD` | Garmin 国际版密码 |
+| `GARMIN_CN_USERNAME` | Garmin 中国版用户名/邮箱 |
+| `GARMIN_CN_PASSWORD` | Garmin 中国版密码 |
+
+#### 工作原理
+
+1. 登录 Garmin 中国版，获取最新活动时间
+2. 登录 Garmin 国际版，下载中国版没有的新活动
+3. 上传新活动到 Garmin 中国版
+4. 通过活动开始时间匹配，自动更新中国版的活动名称和类型
+
+#### 运行命令
+
+```bash
+python run_page/garmin_sync_global_cn.py
+```
+
+#### 运动类型映射
+
+运动类型通过 `activity_type_map.py` 中的 `map_com_type_to_cn()` 函数进行国际版和中国版之间的映射转换。
 
 ---
 

@@ -26,3 +26,20 @@ route.png
 route.svg
 
 .env
+
+# CI/CD and debug files
+*.json
+!package.json
+!pnpm-lock.yaml
+
+# Local data and tokens
+*.pkl
+*.env
+*.env.local
+FIT_OUT/
+data/FIT_OUT/
+
+# Output files
+*.log
+output.txt
+run_page/output.txt
