@@ -34,9 +34,15 @@ async def get_cn_existing_timestamps(cn_client):
 
     NOTE: COM and CN have different activity IDs for the same activity.
     We use startTimeGMT + distance to match activities across platforms.
+    
+    Returns a dict: normalized_time -> list of (distance, activityId)
+    This PRESERVES ALL activities including those with duplicate timestamps,
+    unlike a set which would lose entries.
     """
     garmin_cn = Garmin(cn_client, "CN", False)
-    cn_timestamps = set()
+    # Use dict to store ALL CN activities, keyed by normalized timestamp
+    # Value is a list of (distance, activityId) to handle multiple activities with same timestamp
+    cn_ts_dict = {}
     total_fetched = 0
 
     # Get all CN activities in batches
@@ -53,20 +59,25 @@ async def get_cn_existing_timestamps(cn_client):
             start_time = act.get("startTimeGMT", "")
             distance = act.get("distance", 0) or 0
             if start_time:
-                cn_timestamps.add((start_time, distance))
-        print(f"[DEBUG] CN activities: fetched {len(activities)} (total: {total_fetched}), timestamps count: {len(cn_timestamps)}")
+                # Normalize: strip sub-second precision and timezone
+                import re as _re
+                normalized_time = _re.sub(r'\.\d+(.*?)$', '', start_time).split('+')[0].split('Z')[0]
+                if normalized_time not in cn_ts_dict:
+                    cn_ts_dict[normalized_time] = []
+                cn_ts_dict[normalized_time].append((distance, act.get("activityId")))
+        print(f"[DEBUG] CN activities: fetched {len(activities)} (total: {total_fetched}), unique timestamps: {len(cn_ts_dict)}")
         if len(activities) < limit:
             break
         start += limit
 
-    print(f"[DEBUG] get_cn_existing_timestamps: Found {len(cn_timestamps)} unique activities in Garmin CN (fetched {total_fetched} total)")
-    
+    print(f"[DEBUG] get_cn_existing_timestamps: Found {len(cn_ts_dict)} unique timestamps ({total_fetched} total entries) in Garmin CN")
+
     # Debug: print first few entries
-    if cn_timestamps:
-        sample = list(cn_timestamps)[:3]
-        print(f"[DEBUG] Sample CN timestamps: {sample}")
+    if cn_ts_dict:
+        sample = list(cn_ts_dict.items())[:3]
+        print(f"[DEBUG] Sample CN timestamps: {[(t, lst[:2]) for t, lst in sample]}")
     
-    return cn_timestamps
+    return cn_ts_dict
 
 
 async def download_with_cn_filter(
@@ -88,6 +99,8 @@ async def download_with_cn_filter(
     garmin_id2type = {}  # Collect activity type for post-upload CN update
 
     filtered_count = 0  # Track how many activities were filtered (already exist in CN)
+    unmatched_debug = []  # First few unmatched COM activities for debugging
+
     for id in activity_ids:
         try:
             activity_summary = await garmin_com.get_activity_summary(id)
@@ -106,16 +119,19 @@ async def download_with_cn_filter(
             exists_in_cn = False
             matched_cn_time = None
             if start_time:
-                for cn_time, cn_dist in cn_existing_timestamps:
-                    # Normalize timestamps for comparison (strip sub-second precision and timezone)
-                    cn_normalized = re.sub(r'\.\d+(.*?)$', '', cn_time).split('+')[0].split('Z')[0]
-                    com_normalized = re.sub(r'\.\d+(.*?)$', '', start_time).split('+')[0].split('Z')[0]
-                    if cn_normalized == com_normalized:
-                        dist_diff = abs(cn_dist - distance)
-                        if dist_diff < 1.0 or (cn_dist == 0 or distance == 0):
-                            exists_in_cn = True
-                            matched_cn_time = cn_time
-                            break
+                # Normalize COM timestamp once
+                com_normalized = re.sub(r'\.\d+(.*?)$', '', start_time).split('+')[0].split('Z')[0]
+                # Look up in CN dict: all CN entries with this normalized timestamp
+                cn_entries = cn_existing_timestamps.get(com_normalized, [])
+                for cn_dist, cn_id in cn_entries:
+                    dist_diff = abs(cn_dist - distance)
+                    if dist_diff < 1.0 or (cn_dist == 0 or distance == 0):
+                        exists_in_cn = True
+                        matched_cn_time = com_normalized
+                        break
+                # Debug: track first few unmatched
+                if not exists_in_cn and len(unmatched_debug) < 5:
+                    unmatched_debug.append((id, com_normalized, distance, cn_entries))
             if exists_in_cn:
                 filtered_count += 1
                 continue
@@ -136,7 +152,11 @@ async def download_with_cn_filter(
             continue
     
     print(f"[DEBUG] Filtered out {filtered_count} activities that already exist in CN (out of {len(activity_ids)} total)")
-    print(f"[DEBUG] CN existing timestamps: {len(cn_existing_timestamps)}, COM total: {len(activity_ids)}")
+    print(f"[DEBUG] CN unique timestamps: {len(cn_existing_timestamps)}, COM total: {len(activity_ids)}")
+    if unmatched_debug:
+        print(f"[DEBUG] First {len(unmatched_debug)} UNMATCHED COM activities (not in CN):")
+        for uid, utime, udist, uentries in unmatched_debug:
+            print(f"  COM {uid}: time={utime}, dist={udist} | CN entries for this time: {uentries}")
 
     # Apply max_activities limit only if explicitly set (not 0)
     if max_activities > 0 and len(to_generate_ids) > max_activities:
@@ -210,26 +230,29 @@ async def upload_activities_to_garmin_cn(garmin_cn_wrapper, files, id2title, id2
                 print(f"  [update] Could not extract start time from {filename}, skipping name/type update")
                 continue
 
-            # Search CN activities to find the matching one
+            # Search CN activities to find the matching one (search up to 1000 entries)
             found_cn_id = None
             current_cn_name = None
             current_cn_type = None
 
-            for offset in range(0, 300, 100):
+            for offset in range(0, 1000, 100):
                 cn_activities = await garmin_cn_wrapper.get_activities(offset, 100)
                 if not cn_activities:
                     break
 
                 for act in cn_activities:
                     act_start = act.get("startTimeGMT", "")
-                    if act_start and act_start == start_time_iso:
-                        found_cn_id = act.get("activityId")
-                        current_cn_name = act.get("activityName", "")
-                        current_cn_type = (
-                            act.get("activityType", {}).get("typeKey", "")
-                            or act.get("activityType", {}).get("typeGui", "")
-                        )
-                        break
+                    if act_start:
+                        # Normalize CN timestamp the same way as _extract_start_time_from_file
+                        act_start_norm = re.sub(r'\.\d+(.*?)$', '', act_start).split('+')[0].split('Z')[0]
+                        if act_start_norm == start_time_iso:
+                            found_cn_id = act.get("activityId")
+                            current_cn_name = act.get("activityName", "")
+                            current_cn_type = (
+                                act.get("activityType", {}).get("typeKey", "")
+                                or act.get("activityType", {}).get("typeGui", "")
+                            )
+                            break
 
                 if found_cn_id:
                     break
@@ -296,24 +319,35 @@ def _extract_start_time_from_file(filepath):
     ext = os.path.splitext(filepath)[-1].lower()
 
     try:
+        if not os.path.exists(filepath):
+            print(f"  [extract] File not found: {filepath}")
+            return None
+
         if ext == ".fit":
             with open(filepath, "rb") as f:
                 data = f.read()
 
             # FIT epoch: 631065600000 ms since Jan 1, 1989 00:00:00 UTC
-            # We search for uint32 timestamps interpreted as Unix seconds
-            # and convert FIT uint32 timestamps (ms) to Unix seconds
+            # We search for uint32 values that fall in a reasonable timestamp range
             FIT_EPOCH_MS = 631065600000
             min_ts_ms = int(dt.datetime(2020, 1, 1, tzinfo=dt.timezone.utc).timestamp() * 1000)
             max_ts_ms = int(dt.datetime(2030, 12, 31, tzinfo=dt.timezone.utc).timestamp() * 1000)
 
             # Search for uint32 values that could be FIT ms timestamps
             data_words = struct.unpack(f"<{len(data)//4}I", data[:(len(data)//4)*4])
+            candidates = []
             for val in data_words:
                 if min_ts_ms <= val <= max_ts_ms:
                     unix_sec = (val - FIT_EPOCH_MS) / 1000.0
                     start_dt = dt.datetime.fromtimestamp(unix_sec, tz=dt.timezone.utc)
-                    return start_dt.strftime("%Y-%m-%dT%H:%M:%S")
+                    candidates.append(start_dt)
+            if candidates:
+                # Return the earliest timestamp (usually the activity start time)
+                earliest = min(candidates)
+                return earliest.strftime("%Y-%m-%dT%H:%M:%S")
+            else:
+                print(f"  [extract] FIT: no valid timestamps in range (file size: {len(data)} bytes)")
+                return None
 
         elif ext == ".tcx":
             try:
@@ -324,17 +358,34 @@ def _extract_start_time_from_file(filepath):
 
                 # In TCX, <Id> at Activity level contains the activity start time
                 # Format: <Id>2026-04-21T14:33:44Z</Id>
+                found_times = []
                 for elem in root.iter():
                     tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
                     if tag == "Id" and elem.text:
                         time_str = elem.text.strip()
                         try:
                             dt_obj = dt.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
-                            return dt_obj.strftime("%Y-%m-%dT%H:%M:%S")
+                            found_times.append(dt_obj.strftime("%Y-%m-%dT%H:%M:%S"))
                         except ValueError:
-                            pass
-            except Exception:
-                pass
+                            print(f"  [extract] TCX: could not parse <Id>: '{time_str}'")
+                if found_times:
+                    return found_times[0]
+                else:
+                    # Fallback: check for <Time> trackpoints if <Id> not found
+                    for elem in root.iter():
+                        tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+                        if tag == "Time" and elem.text:
+                            time_str = elem.text.strip()
+                            try:
+                                dt_obj = dt.datetime.fromisoformat(time_str.replace("Z", "+00:00"))
+                                return dt_obj.strftime("%Y-%m-%dT%H:%M:%S")
+                            except ValueError:
+                                pass
+                    print(f"  [extract] TCX: no <Id> or <Time> element found in {filepath}")
+                    return None
+            except Exception as e:
+                print(f"  [extract] TCX parse error for {filepath}: {e}")
+                return None
 
         elif ext == ".gpx":
             try:
@@ -353,11 +404,15 @@ def _extract_start_time_from_file(filepath):
                             return dt_obj.strftime("%Y-%m-%dT%H:%M:%S")
                         except ValueError:
                             pass
-            except Exception:
-                pass
+                print(f"  [extract] GPX: no <time> element found in {filepath}")
+                return None
+            except Exception as e:
+                print(f"  [extract] GPX parse error for {filepath}: {e}")
+                return None
 
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"  [extract] Unexpected error parsing {filepath}: {e}")
+        return None
 
     return None
 
