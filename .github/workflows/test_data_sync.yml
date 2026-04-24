@@ -6,11 +6,6 @@ on:
     branches:
       - test
 
-# Global configuration to show all console output
-defaults:
-  run:
-    shell: bash -l
-
 env:
   RUN_TYPE: strava
   ATHLETE: XIAO Q

@@ -5,11 +5,6 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Global configuration to show all console output
-defaults:
-  run:
-    shell: bash -l
-
 jobs:
   python_lint_and_test:
     runs-on: ubuntu-latest
