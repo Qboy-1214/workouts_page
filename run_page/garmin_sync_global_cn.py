@@ -234,6 +234,7 @@ async def download_with_cn_filter(
     to_generate_garmin_id2title = {}
     garmin_summary_infos_dict = {}
     garmin_id2type = {}  # Collect activity type for post-upload CN update
+    garmin_id2start_time = {}  # Store normalized startTimeGMT from garminconnect API
 
     filtered_count = 0  # Track how many activities were filtered (already exist in CN)
     unmatched_debug = []  # First few unmatched COM activities for debugging
@@ -288,6 +289,10 @@ async def download_with_cn_filter(
                 activity_summary, id
             )
             garmin_id2type[id] = activity_type_key
+            # Normalize startTimeGMT from garminconnect API as reliable fallback
+            if start_time:
+                norm = re.sub(r'\.\d+(.*?)$', '', start_time).split('+')[0].split('Z')[0]
+                garmin_id2start_time[id] = norm
         except Exception as e:
             print(f"Failed to get activity summary {id}: {str(e)}")
             continue
@@ -323,10 +328,10 @@ async def download_with_cn_filter(
     )
     print(f"Download finished. Elapsed {time.time()-start_time} seconds")
 
-    return to_generate_ids, to_generate_garmin_id2title, garmin_id2type
+    return to_generate_ids, to_generate_garmin_id2title, garmin_id2type, garmin_id2start_time
 
 
-async def upload_activities_to_garmin_cn(garmin_cn_wrapper, files, id2title, id2type):
+async def upload_activities_to_garmin_cn(garmin_cn_wrapper, files, id2title, id2type, id2start_time=None):
     """Upload activities to Garmin CN and update name/type (match by start time).
 
     Args:
@@ -364,11 +369,15 @@ async def upload_activities_to_garmin_cn(garmin_cn_wrapper, files, id2title, id2
                 # For simplicity, search by activity name pattern (recent uploads first)
                 pass
 
-            # Get start time from the activity's summary info in the FIT/GPX file
-            # Use the uploaded file to extract start time
+            # Get start time: try file extraction first, fall back to garminconnect API's startTimeGMT
             start_time_iso = _extract_start_time_from_file(filepath)
+            if not start_time_iso and id2start_time:
+                com_id_from_filename = os.path.splitext(filename)[0]
+                start_time_iso = id2start_time.get(com_id_from_filename)
+                if start_time_iso:
+                    print(f"  [update] Using API start time as fallback for {filename}: {start_time_iso}")
             if not start_time_iso:
-                print(f"  [update] Could not extract start time from {filename}, skipping name/type update")
+                print(f"  [update] Could not extract start time for {filename}, skipping name/type update")
                 continue
 
             # Search CN activities to find the matching one (search up to 1000 entries)
@@ -667,7 +676,7 @@ if __name__ == "__main__":
         )
     )
     loop.run_until_complete(future)
-    new_ids, id2title, id2type = future.result()
+    new_ids, id2title, id2type, id2start_time = future.result()
 
     # Step 4: Find files to upload
     to_upload_files = []
@@ -705,7 +714,7 @@ if __name__ == "__main__":
         asyncio.set_event_loop(loop)
         try:
             future = asyncio.ensure_future(
-                upload_activities_to_garmin_cn(garmin_cn_wrapper, to_upload_files, id2title, id2type)
+                upload_activities_to_garmin_cn(garmin_cn_wrapper, to_upload_files, id2title, id2type, id2start_time)
             )
             loop.run_until_complete(future)
             print("Upload completed!")

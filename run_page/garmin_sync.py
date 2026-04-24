@@ -814,7 +814,7 @@ async def download_garmin_data(
                                 os.rename(extracted_path, target_path)
                         elif file_info.filename.endswith(
                             ".tcx"
-                        ) or file_info.filename.uppercase().endswith(".TCX"):
+                        ) or file_info.filename.upper().endswith(".TCX"):
                             extracted_path = os.path.join(folder, file_info.filename)
                             target_path = os.path.join(folder, f"{activity_id}.tcx")
                             result_type = "TCX"
@@ -874,11 +874,14 @@ def get_garmin_summary_infos(activity_summary, activity_id):
         garmin_summary_infos["distance"] = summary_dto.get("distance")
         garmin_summary_infos["average_hr"] = summary_dto.get("averageHR")
         garmin_summary_infos["average_speed"] = summary_dto.get("averageSpeed")
-        start_time = dt.datetime.fromisoformat(
-            summary_dto.get("startTimeGMT")[:-1] + "+00:00"
-        )
+
+        # Garmin API may return malformed timestamps like '2026-04-22 11:19:3.0Z'
+        # (space instead of T, missing leading zero in seconds). Use regex-based parsing.
+        raw_time = summary_dto.get("startTimeGMT", "")
+        start_time = _parse_garmin_timestamp(raw_time)
+
         duration_second = summary_dto.get("duration")
-        end_time = start_time + dt.timedelta(seconds=duration_second)
+        end_time = start_time + dt.timedelta(seconds=duration_second or 0)
         garmin_summary_infos["start_time"] = start_time.isoformat()
         garmin_summary_infos["end_time"] = end_time.isoformat()
         garmin_summary_infos["moving_time"] = summary_dto.get("movingDuration")
@@ -886,6 +889,37 @@ def get_garmin_summary_infos(activity_summary, activity_id):
     except Exception as e:
         print(f"Failed to get activity summary {activity_id}: {str(e)}")
     return garmin_summary_infos
+
+
+def _parse_garmin_timestamp(raw: str) -> dt.datetime:
+    """Parse Garmin API timestamp that may be malformed.
+
+    Garmin API sometimes returns timestamps like '2026-04-22 11:19:3.0Z'
+    (space separator, single-digit seconds/minutes). Standard
+    fromisoformat cannot handle these, so we parse manually.
+    """
+    import re as _re
+
+    # Normalize: replace space with T, strip Z/ timezone suffix
+    normalized = raw.replace(" ", "T").replace("Z", "").rstrip("-+")
+    # Remove sub-second precision
+    normalized = _re.sub(r"\.\d+", "", normalized)
+
+    # Try standard isoformat first (handles proper ISO 8601)
+    try:
+        if "+" in raw or raw.endswith("Z"):
+            tz = dt.timezone.utc
+            return dt.datetime.fromisoformat(normalized).replace(tzinfo=tz)
+        return dt.datetime.fromisoformat(normalized)
+    except ValueError:
+        pass
+
+    # Fallback: regex-based extraction of Y-M-D H:M:S components
+    m = _re.match(r"(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{1,2}):(\d{1,2})", normalized)
+    if m:
+        year, month, day, hour, minute, second = map(int, m.groups())
+        return dt.datetime(year, month, day, hour, minute, second, tzinfo=dt.timezone.utc)
+    raise ValueError(f"Cannot parse timestamp: {raw}")
 
 
 def restore_or_login(username, password, auth_domain):
