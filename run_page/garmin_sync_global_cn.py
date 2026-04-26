@@ -113,6 +113,9 @@ async def download_with_cn_filter(
 
     If since_start_time is provided, only fetch COM activities newer than that time.
     """
+    # Ensure output directory exists
+    os.makedirs(folder, exist_ok=True)
+
     garmin_com = Garmin(com_client, "COM", is_only_running)
 
     # Get COM activities: if since_start_time given, fetch only recent batch (time-filtered)
