@@ -32,6 +32,7 @@ dependencies = [
   "garmin-fit-sdk",
   "haversine==2.8.0",
   "garth",
+  "pytz",
   "pycryptodome",
   "duckdb",
   "openai",
