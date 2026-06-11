@@ -14,7 +14,6 @@ CI 调试工具集 - 用于获取 GitHub Actions CI 运行信息
 import json
 import sys
 import urllib.request
-from pathlib import Path
 
 # 配置
 REPO = "Qboy-1214/workouts_page"
@@ -115,7 +114,9 @@ def get_job_detail(job_id):
     print("\nSteps:")
     print("-" * 60)
     for step in data.get("steps", []):
-        icon = "✓" if step.get("conclusion") == "success" else "✗" if step.get("conclusion") == "failure" else "○" if step.get("conclusion") == "skipped" else " "
+        icon = (
+            "✓" if step.get("conclusion") == "success" else "✗" if step.get("conclusion") == "failure" else "○" if step.get("conclusion") == "skipped" else " "
+        )
         print(f"  [{icon}] {step.get('name')}: {step.get('conclusion', 'running')}")
 
 
