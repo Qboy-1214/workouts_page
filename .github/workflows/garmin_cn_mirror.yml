@@ -68,8 +68,9 @@ jobs:
           echo "IP info:"
           curl -s https://cloudflare.com/cdn-cgi/trace | grep -E "ip|warp"
 
-      - name: Cache Garmin login tokens
-        uses: actions/cache@v4
+      - name: Restore Garmin login tokens
+        id: token_cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.garminconnect
@@ -77,7 +78,6 @@ jobs:
           key: garmin-tokens-mirror-${{ github.run_id }}
           restore-keys: |
             garmin-tokens-mirror-
-        save-always: true
 
       - name: Run sync Garmin COM to Garmin CN script
         run: |
@@ -85,6 +85,15 @@ jobs:
         # Syncs from Garmin International (COM) to Garmin China (CN)
         # Uses GARMIN_CN_USERNAME, GARMIN_CN_PASSWORD, GARMIN_COM_USERNAME, GARMIN_COM_PASSWORD environment variables
         # If you only want to sync 'type running' add args --only-run
+
+      - name: Save Garmin login tokens
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.garminconnect
+            ~/.garth
+          key: garmin-tokens-mirror-${{ github.run_id }}
 
       - name: Push new runs
         run: |

@@ -102,8 +102,9 @@ jobs:
           echo "IP info:"
           curl -s https://cloudflare.com/cdn-cgi/trace | grep -E "ip|warp"
 
-      - name: Cache Garmin login tokens
-        uses: actions/cache@v4
+      - name: Restore Garmin login tokens
+        id: token_cache
+        uses: actions/cache/restore@v4
         with:
           path: |
             ~/.garminconnect
@@ -111,7 +112,6 @@ jobs:
           key: garmin-tokens-${{ github.run_id }}
           restore-keys: |
             garmin-tokens-
-        save-always: true
 
       - name: Cache Data Files
         if: env.SAVE_DATA_IN_GITHUB_CACHE == 'true'
@@ -323,6 +323,15 @@ jobs:
           git add .
           git commit -m 'Add new workouts' || echo 'nothing to commit'
           git push || echo 'nothing to push'
+
+      - name: Save Garmin login tokens
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.garminconnect
+            ~/.garth
+          key: garmin-tokens-${{ github.run_id }}
 
       - name: Set Output
         id: set_output
