@@ -2,6 +2,7 @@ import datetime
 import random
 import string
 
+from config import TYPE_DICT
 from geopy.geocoders import Nominatim, options
 from sqlalchemy import (
     Column,
@@ -25,7 +26,7 @@ def randomword():
     return "".join(random.choice(letters) for i in range(4))
 
 
-options.default_user_agent = "running_page"
+options.default_user_agent = "workouts_page"
 # reverse the location (lat, lon) -> location detail
 g = Nominatim(user_agent=randomword())
 
@@ -36,7 +37,6 @@ ACTIVITY_KEYS = [
     "distance",
     "moving_time",
     "type",
-    "subtype",
     "start_date",
     "start_date_local",
     "location_country",
@@ -44,6 +44,7 @@ ACTIVITY_KEYS = [
     "average_heartrate",
     "average_speed",
     "elevation_gain",
+    "source",
 ]
 
 
@@ -56,7 +57,6 @@ class Activity(Base):
     moving_time = Column(Interval)
     elapsed_time = Column(Interval)
     type = Column(String)
-    subtype = Column(String)
     start_date = Column(String)
     start_date_local = Column(String)
     location_country = Column(String)
@@ -65,6 +65,7 @@ class Activity(Base):
     average_speed = Column(Float)
     elevation_gain = Column(Float)
     streak = None
+    source = Column(String)
 
     def to_dict(self):
         out = {}
@@ -87,6 +88,13 @@ def update_or_create_activity(session, run_activity):
         activity = (
             session.query(Activity).filter_by(run_id=int(run_activity.id)).first()
         )
+        # In stravalib 2.x, activity.type is a pydantic model object (RelaxedActivityType).
+        # Use .root attribute to get the actual string value for dict key lookup.
+        activity_type_value = run_activity.type.root if run_activity.type else ""
+        type = activity_type_value
+        source = "strava"
+        if activity_type_value in TYPE_DICT:
+            type = TYPE_DICT[activity_type_value]
 
         current_elevation_gain = 0.0  # default value
 
@@ -102,40 +110,49 @@ def update_or_create_activity(session, run_activity):
         ):
             current_elevation_gain = float(run_activity.elevation_gain)
 
+        # In stravalib 2.x, moving_time and elapsed_time are Duration (int subclass).
+        # Convert to datetime.timedelta using .timedelta() method.
+        moving_time = (
+            run_activity.moving_time.timedelta()
+            if hasattr(run_activity.moving_time, "timedelta")
+            else run_activity.moving_time
+        )
+        elapsed_time = (
+            run_activity.elapsed_time.timedelta()
+            if hasattr(run_activity.elapsed_time, "timedelta")
+            else run_activity.elapsed_time
+        )
+
         if not activity:
-            start_point = run_activity.start_latlng
             location_country = getattr(run_activity, "location_country", "")
-            # or China for #176 to fix
-            if not location_country and start_point or location_country == "China":
-                try:
-                    location_country = str(
-                        g.reverse(
-                            f"{start_point.lat}, {start_point.lon}",
-                            language="zh-CN",  # type: ignore
-                            timeout=15,
-                        )
-                    )
-                # limit (only for the first time)
-                except Exception:  # noqa: BLE001
-                    try:
-                        location_country = str(
-                            g.reverse(
-                                f"{start_point.lat}, {start_point.lon}",
-                                language="zh-CN",  # type: ignore
-                                timeout=15,
-                            )
-                        )
-                    except Exception:  # noqa: S110, BLE001
-                        pass
+            # TODO: Temporarily disabled due to slow OpenStreetMap queries
+            # # or China for #176 to fix
+            # if not location_country and start_point or location_country == "China":
+            #     try:
+            #         location_country = str(
+            #             g.reverse(
+            #                 f"{start_point.lat}, {start_point.lon}", language="zh-CN"  # type: ignore
+            #             )
+            #         )
+            #     # limit (only for the first time)
+            #     except Exception:
+            #         try:
+            #             location_country = str(
+            #                 g.reverse(
+            #                     f"{start_point.lat}, {start_point.lon}",
+            #                     language="zh-CN",  # type: ignore
+            #                 )
+            #             )
+            #         except Exception:
+            #             pass
 
             activity = Activity(
                 run_id=run_activity.id,
                 name=run_activity.name,
                 distance=run_activity.distance,
-                moving_time=run_activity.moving_time,
-                elapsed_time=run_activity.elapsed_time,
-                type=run_activity.type,
-                subtype=run_activity.subtype,
+                moving_time=moving_time,
+                elapsed_time=elapsed_time,
+                type=type,
                 start_date=run_activity.start_date,
                 start_date_local=run_activity.start_date_local,
                 location_country=location_country,
@@ -145,22 +162,23 @@ def update_or_create_activity(session, run_activity):
                 summary_polyline=(
                     run_activity.map and run_activity.map.summary_polyline or ""
                 ),
+                source=source,
             )
             session.add(activity)
             created = True
         else:
             activity.name = run_activity.name
             activity.distance = float(run_activity.distance)
-            activity.moving_time = run_activity.moving_time
-            activity.elapsed_time = run_activity.elapsed_time
-            activity.type = run_activity.type
-            activity.subtype = run_activity.subtype
+            activity.moving_time = moving_time
+            activity.elapsed_time = elapsed_time
+            activity.type = type
             activity.average_heartrate = run_activity.average_heartrate
             activity.average_speed = float(run_activity.average_speed)
             activity.elevation_gain = current_elevation_gain
             activity.summary_polyline = (
                 run_activity.map and run_activity.map.summary_polyline or ""
             )
+            activity.source = source
     except Exception as e:  # noqa: BLE001
         print(f"something wrong with {run_activity.id}")
         print(str(e))

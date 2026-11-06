@@ -56,8 +56,8 @@ class Track:
         self.run_id = 0
         self.start_latlng = []
         self.type = "Run"
-        self.subtype = None  # for fit file
-        self.device = ""
+        self.source = ""
+        self.name = ""
 
     def load_gpx(self, file_name):
         """
@@ -126,8 +126,10 @@ class Track:
     def load_from_db(self, activity):
         # use strava as file name
         self.file_names = [str(activity.run_id)]
-        start_time = datetime.datetime.strptime(  # noqa: DTZ007
-            activity.start_date_local, "%Y-%m-%d %H:%M:%S"
+        start_time = (
+            datetime.datetime.fromisoformat(activity.start_date_local)
+            .astimezone()
+            .replace(tzinfo=None)
         )
         self.start_time_local = start_time
         self.end_time = start_time + activity.elapsed_time
@@ -252,6 +254,26 @@ class Track:
             return
         polyline_container = []
         heart_rate_list = []
+        # determinate type
+        if gpx.tracks[0].type:
+            self.type = gpx.tracks[0].type
+        # determinate source
+        if gpx.creator:
+            self.source = gpx.creator
+        if gpx.tracks[0].source:
+            self.source = gpx.tracks[0].source
+        if self.source == "xingzhe":
+            self.start_time_local = self.start_time
+            self.end_time_local = self.end_time
+            self.run_id = gpx.tracks[0].number
+        # determinate name
+        if gpx.name:
+            self.name = gpx.name
+        elif gpx.tracks[0].name:
+            self.name = gpx.tracks[0].name
+        else:
+            self.name = self.type + " from " + self.source
+
         for t in gpx.tracks:
             if self.track_name is None:
                 self.track_name = t.name
@@ -290,9 +312,11 @@ class Track:
             self.start_latlng = start_point(*polyline_container[0])
         except Exception as e:  # noqa: BLE001
             print(f"Error getting start point: {e}")
-        self.start_time_local, self.end_time_local = parse_datetime_to_local(
-            self.start_time, self.end_time, polyline_container[0]
-        )
+            pass
+        if not self.start_time_local:
+            self.start_time_local, self.end_time_local = parse_datetime_to_local(
+                self.start_time, self.end_time, polyline_container[0]
+            )
         self.polyline_str = polyline.encode(polyline_container)
         self.average_heartrate = (
             sum(heart_rate_list) / len(heart_rate_list) if heart_rate_list else None
@@ -375,14 +399,13 @@ class Track:
             tz=datetime.UTC,
         )
         self.length = message["total_distance"]
-        self.average_heartrate = message.get("avg_heart_rate", None)
-        if message["sport"].lower() == "running":
-            self.type = "Run"
-        else:
-            self.type = message["sport"].lower()
-        self.subtype = message.get("sub_sport", None)
-
-        self.elevation_gain = message.get("total_ascent", None)
+        self.average_heartrate = (
+            message["avg_heart_rate"] if "avg_heart_rate" in message else None
+        )
+        self.elevation_gain = (
+            message["total_ascent"] if "total_ascent" in message else None
+        )
+        self.type = message["sport"].lower()
         # moving_dict
         self.moving_dict["distance"] = message["total_distance"]
         self.moving_dict["moving_time"] = datetime.timedelta(
@@ -415,14 +438,6 @@ class Track:
             self.start_time_local, self.end_time_local = parse_datetime_to_local(
                 self.start_time, self.end_time, None
             )
-
-        # The FIT file created by Garmin
-        if "file_id_mesgs" in fit:
-            device_message = fit["file_id_mesgs"][0]
-            if "manufacturer" in device_message:
-                self.device = device_message["manufacturer"]
-            if "garmin_product" in device_message:
-                self.device += " " + device_message["garmin_product"]
 
     def append(self, other):
         """Append other track to self."""
@@ -464,12 +479,11 @@ class Track:
             ),
         }
 
-    def to_namedtuple(self, run_from="gpx"):
+    def to_namedtuple(self):
         d = {
             "id": self.run_id,
             "name": (self.track_name if self.track_name else ""),  # maybe change later
             "type": self.type,
-            "subtype": (self.subtype if self.subtype else ""),
             "start_date": self.start_time.strftime("%Y-%m-%d %H:%M:%S"),
             "end": self.end_time.strftime("%Y-%m-%d %H:%M:%S"),
             "start_date_local": self.start_time_local.strftime("%Y-%m-%d %H:%M:%S"),
@@ -481,6 +495,7 @@ class Track:
             "elevation_gain": (int(self.elevation_gain) if self.elevation_gain else 0),
             "map": run_map(self.polyline_str),
             "start_latlng": self.start_latlng,
+            "source": self.source,
         }
         d.update(self.moving_dict)
         # return a nametuple that can use . to get attr

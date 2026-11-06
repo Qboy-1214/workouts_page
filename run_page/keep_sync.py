@@ -208,6 +208,7 @@ def parse_raw_data_to_nametuple(
         "average_speed": run_data["distance"] / run_data["duration"],
         "elevation_gain": elevation_gain,
         "location_country": str(run_data.get("region", "")),
+        "source": "Keep",
     }
     return namedtuple("x", d.keys())(*d.values())
 
@@ -504,7 +505,7 @@ def run_keep_sync(
 
     activities_list = generator.load()
     with open(JSON_FILE, "w") as f:
-        json.dump(activities_list, f)
+        json.dump(activities_list, f, indent=0)
 
 
 if __name__ == "__main__":

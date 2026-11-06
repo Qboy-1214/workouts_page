@@ -4,6 +4,7 @@ import sys
 
 import arrow
 import stravalib
+from config import MAPPING_TYPE
 from gpxtrackposter import track_loader
 from polyline_processor import filter_out
 from sqlalchemy import func
@@ -67,13 +68,13 @@ class Generator:
         for activity in self.client.get_activities(**filters):
             if self.only_run and activity.type != "Run":
                 continue
-            if IGNORE_BEFORE_SAVING and activity.map and activity.map.summary_polyline:
-                activity.map.summary_polyline = filter_out(
-                    activity.map.summary_polyline
-                )
-            #  strava use total_elevation_gain as elevation_gain
-            activity.elevation_gain = activity.total_elevation_gain
-            activity.subtype = activity.type
+            if IGNORE_BEFORE_SAVING:
+                if activity.map and activity.map.summary_polyline:
+                    activity.map.summary_polyline = filter_out(
+                        activity.map.summary_polyline
+                    )
+            # Note: source is now hardcoded in update_or_create_activity for stravalib 2.x compatibility
+            # strava uses total_elevation_gain as elevation_gain
             created = update_or_create_activity(self.session, activity)
             if created:
                 sys.stdout.write("+")
@@ -95,9 +96,7 @@ class Generator:
         synced_files = []
 
         for t in tracks:
-            created = update_or_create_activity(
-                self.session, t.to_namedtuple(run_from=file_suffix)
-            )
+            created = update_or_create_activity(self.session, t.to_namedtuple())
             if created:
                 sys.stdout.write("+")
             else:
@@ -106,6 +105,16 @@ class Generator:
             sys.stdout.flush()
 
         save_synced_data_file_list(synced_files)
+
+        self.session.commit()
+
+    def sync_from_kml_track(self, track):
+        created = update_or_create_activity(self.session, track.to_namedtuple())
+        if created:
+            sys.stdout.write("+")
+        else:
+            sys.stdout.write(".")
+        sys.stdout.flush()
 
         self.session.commit()
 
@@ -140,9 +149,11 @@ class Generator:
         last_date = None
         for activity in activities:
             # Determine running streak.
-            date = datetime.datetime.strptime(  # noqa: DTZ007
-                activity.start_date_local, "%Y-%m-%d %H:%M:%S"  # type: ignore
-            ).date()
+            date = (
+                datetime.datetime.fromisoformat(activity.start_date_local)
+                .astimezone()
+                .date()
+            )
             if last_date is None:
                 streak = 1
             elif date == last_date:
@@ -162,6 +173,39 @@ class Generator:
             activity_list.append(exported_activity)
 
         self.session.commit()
+        return activity_list
+
+    def loadForMapping(self):
+        activities = (
+            self.session.query(Activity)
+            .filter(Activity.type.in_(MAPPING_TYPE))
+            .order_by(Activity.start_date_local)
+        )
+        activity_list = []
+
+        streak = 0
+        last_date = None
+        for activity in activities:
+            # Determine running streak.
+            # if activity.type == "Run" or activity.type == "Walk":
+            date = (
+                datetime.datetime.fromisoformat(activity.start_date_local)
+                .astimezone()
+                .date()
+            )
+            if last_date is None:
+                streak = 1
+            elif date == last_date:
+                pass
+            elif date == last_date + datetime.timedelta(days=1):
+                streak += 1
+            else:
+                assert date > last_date
+                streak = 1
+            activity.streak = streak
+            last_date = date
+            activity_list.append(activity.to_dict())
+
         return activity_list
 
     def get_old_tracks_ids(self):
