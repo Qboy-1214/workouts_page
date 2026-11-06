@@ -961,8 +961,9 @@ def restore_or_login(username, password, auth_domain):
         print(f"Logged in using saved tokens for {auth_domain}")
         return client
     except GarminConnectTooManyRequestsError as e:
-        print(f"Rate limit (429) during login for {auth_domain}: {e}")
-        raise e
+        # Fall through to the credential retry loop below (with backoff)
+        # instead of aborting on the first token-restore 429.
+        print(f"Rate limit (429) during token restore for {auth_domain}: {e}")
     except (
         GarminConnectAuthenticationError,
         GarminConnectConnectionError,
