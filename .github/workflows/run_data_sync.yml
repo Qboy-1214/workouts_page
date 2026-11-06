@@ -102,6 +102,16 @@ jobs:
           echo "IP info:"
           curl -s https://cloudflare.com/cdn-cgi/trace | grep -E "ip|warp"
 
+      - name: Cache Garmin login tokens
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.garminconnect
+            ~/.garth
+          key: garmin-tokens-${{ github.run_id }}
+          restore-keys: |
+            garmin-tokens-
+
       - name: Cache Data Files
         if: env.SAVE_DATA_IN_GITHUB_CACHE == 'true'
         uses: actions/cache@v4
