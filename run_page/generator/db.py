@@ -111,6 +111,58 @@ class Activity(Base):
         return out
 
 
+def _resolve_location_country(run_activity):
+    """Resolve location_country for an activity: attribute → geocode cache → Nominatim.
+
+    Used by BOTH the create and update branches of update_or_create_activity:
+    data.db is committed by the data-sync workflow, so most runs only hit the
+    update branch — geocoding must live in a shared helper or new location
+    data would never be backfilled.
+    """
+    location_country = getattr(run_activity, "location_country", "") or ""
+    start_point = getattr(run_activity, "start_latlng", None)
+    if not location_country and not start_point:
+        # stravalib 2.x SummaryActivity carries no start_latlng (the
+        # list endpoint omits it) — fall back to the first point of
+        # the GPS polyline, which matches the geocode cache keys.
+        act_map = getattr(run_activity, "map", None)
+        sp_poly = getattr(act_map, "summary_polyline", None)
+        if sp_poly:
+            try:
+                lat, lon = mod_polyline.decode(sp_poly)[0]
+                start_point = type("StartPoint", (), {"lat": lat, "lon": lon})()
+            except Exception:  # noqa: BLE001
+                start_point = None
+    if not location_country and start_point:
+        cache_key = f"{start_point.lat:.3f},{start_point.lon:.3f}"
+        geocode_cache = _load_geocode_cache()
+        if cache_key in geocode_cache:
+            return geocode_cache[cache_key]
+        if not _geocode_debug["miss_printed"]:
+            print(
+                f"[geocode] miss: key={cache_key} "
+                f"start={start_point!r} cache_size={len(geocode_cache)}"
+            )
+            _geocode_debug["miss_printed"] = True
+        try:
+            location_country = str(
+                g.reverse(
+                    f"{start_point.lat}, {start_point.lon}",
+                    language="zh-CN",  # type: ignore
+                    timeout=15,
+                )
+            )
+            geocode_cache[cache_key] = location_country
+            _save_geocode_cache(geocode_cache)
+            return location_country
+        except Exception:  # noqa: BLE001
+            pass
+    elif not location_country and not _geocode_debug["none_printed"]:
+        print(f"[geocode] no start_point on {getattr(run_activity, 'id', '?')}")
+        _geocode_debug["none_printed"] = True
+    return location_country
+
+
 def update_or_create_activity(session, run_activity):
     created = False
     try:
@@ -153,47 +205,7 @@ def update_or_create_activity(session, run_activity):
         )
 
         if not activity:
-            location_country = getattr(run_activity, "location_country", "")
-            start_point = getattr(run_activity, "start_latlng", None)
-            if not location_country and not start_point:
-                # stravalib 2.x SummaryActivity carries no start_latlng (the
-                # list endpoint omits it) — fall back to the first point of
-                # the GPS polyline, which matches the geocode cache keys.
-                act_map = getattr(run_activity, "map", None)
-                sp_poly = getattr(act_map, "summary_polyline", None)
-                if sp_poly:
-                    try:
-                        lat, lon = mod_polyline.decode(sp_poly)[0]
-                        start_point = type("StartPoint", (), {"lat": lat, "lon": lon})()
-                    except Exception:  # noqa: BLE001
-                        start_point = None
-            if not location_country and start_point:
-                cache_key = f"{start_point.lat:.3f},{start_point.lon:.3f}"
-                geocode_cache = _load_geocode_cache()
-                if cache_key in geocode_cache:
-                    location_country = geocode_cache[cache_key]
-                else:
-                    if not _geocode_debug["miss_printed"]:
-                        print(
-                            f"[geocode] miss: key={cache_key} "
-                            f"start={start_point!r} cache_size={len(geocode_cache)}"
-                        )
-                        _geocode_debug["miss_printed"] = True
-                    try:
-                        location_country = str(
-                            g.reverse(
-                                f"{start_point.lat}, {start_point.lon}",
-                                language="zh-CN",  # type: ignore
-                                timeout=15,
-                            )
-                        )
-                        geocode_cache[cache_key] = location_country
-                        _save_geocode_cache(geocode_cache)
-                    except Exception:  # noqa: BLE001
-                        pass
-            elif not location_country and not _geocode_debug["none_printed"]:
-                print(f"[geocode] no start_point on {run_activity.id}")
-                _geocode_debug["none_printed"] = True
+            location_country = _resolve_location_country(run_activity)
 
             activity = Activity(
                 run_id=run_activity.id,
@@ -228,6 +240,10 @@ def update_or_create_activity(session, run_activity):
                 run_activity.map and run_activity.map.summary_polyline or ""
             )
             activity.source = source
+            # Backfill location for rows created before geocoding existed —
+            # data.db is committed between runs, so this branch is the hot path.
+            if not activity.location_country:
+                activity.location_country = _resolve_location_country(run_activity)
     except Exception as e:  # noqa: BLE001
         print(f"something wrong with {run_activity.id}")
         print(str(e))
