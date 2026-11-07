@@ -1,0 +1,16 @@
+name: tmp photon reachability test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  t:
+    runs-on: ubuntu-latest
+    steps:
+      - name: photon from runner
+        run: |
+          for i in 1 2 3; do
+            echo "--- attempt $i ---"
+            curl -sS --max-time 15 "https://photon.komoot.io/reverse?lat=24.5&lon=118.0" | head -c 300 || echo "FAILED"
+            echo ""
+          done
