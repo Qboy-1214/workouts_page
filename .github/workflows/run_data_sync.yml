@@ -23,10 +23,15 @@ on:
       - run_page/oppo_sync.py
       - requirements.txt
 
+# Garmin COM logins are a scarce per-account resource — never run two syncs
+# (schedule + manual/push) against Garmin at the same time.
+concurrency:
+  group: garmin-data-sync
+  cancel-in-progress: true
+
 env:
   # please change to your own config.
   RUN_TYPE: strava # support strava/nike/garmin/coros/garmin_cn/garmin_sync_cn_global/keep/only_gpx/only_fit/nike_to_strava/strava_to_garmin/tcx_to_garmin/garmin_to_strava/oppo/db_updater, Please change the 'pass' it to your own
-  # Note: strava_to_garmin syncs to Garmin International (COM) only. For China sync, run garmin_sync_cn_global after strava_to_garmin.
   ATHLETE: XIAO Q
   TITLE: XIAO Q's Workouts
   MIN_GRID_DISTANCE: 10 # change min distance here
@@ -208,18 +213,16 @@ jobs:
         run: |
           python run_page/tcx_sync.py
 
-      # Step 3: backup Strava activities to Garmin COM. Failure-tolerant on
-      # purpose: Garmin throttles logins aggressively, and a failed backup must
-      # never block the Pages deploy (step 2) — pages deploy runs right after
-      # the push step below regardless of this step's outcome.
-      - name: Run sync Strava to Garmin(Run with strava(or others upload to strava) data backup in Garmin)
+      # Step 3: backup Strava activities to Garmin COM, then mirror new COM
+      # activities down to Garmin CN reusing the SAME COM login (--with-cn-mirror).
+      # Garmin throttles a second fresh COM login within ~1.5-4h, so the mirror
+      # must share this login. Failure-tolerant: a Garmin hiccup must never
+      # block the Pages deploy (step 2).
+      - name: Run sync Strava to Garmin COM + CN mirror
         id: garmin_com_upload
         continue-on-error: true
-        # if: env.RUN_TYPE == 'strava_to_garmin'
         run: |
-          python run_page/strava_to_garmin_sync.py ${{ secrets.STRAVA_CLIENT_ID }} ${{ secrets.STRAVA_CLIENT_SECRET }} ${{ secrets.STRAVA_CLIENT_REFRESH_TOKEN }} "" "" ${{ secrets.STRAVA_JWT }}
-        # Note: syncs to Garmin International (COM) only. For China, the mirror
-        # workflow (garmin_cn_mirror.yml) runs on an offset schedule.
+          python run_page/strava_to_garmin_sync.py ${{ secrets.STRAVA_CLIENT_ID }} ${{ secrets.STRAVA_CLIENT_SECRET }} ${{ secrets.STRAVA_CLIENT_REFRESH_TOKEN }} "" "" ${{ secrets.STRAVA_JWT }} --with-cn-mirror
 
       - name: Report COM upload status
         if: steps.garmin_com_upload.outcome == 'failure'

@@ -1,14 +1,13 @@
 name: Garmin COM to CN Mirror
 
-# Garmin throttles a second fresh COM credential login within ~15-60 min, and
-# garminconnect's token resume is broken upstream (deprecated garth backend).
-# So this mirror runs on its own schedule, offset from Run Data Sync, and does
-# exactly ONE fresh COM login per run.
+# Manual fallback ONLY — the routine COM->CN mirror now runs inside
+# Run Data Sync (step 3, --with-cn-mirror) sharing its single COM login,
+# because Garmin throttles a second fresh COM credential login within
+# ~1.5-4h. Use this workflow to re-mirror manually a few hours after a
+# failed run, when the login throttle has cooled down.
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 3,15 * * *'
 
 env:
   USE_CLOUDFLARE_WARP: true # GitHub runner IPs get Cloudflare bot challenges from Garmin SSO

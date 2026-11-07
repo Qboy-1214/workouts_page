@@ -5,7 +5,13 @@ import sys
 from datetime import datetime
 
 import requests as _req
+from config import FIT_FOLDER, GPX_FOLDER, TCX_FOLDER
 from garmin_sync import Garmin, restore_or_login
+from garmin_sync_global_cn import (
+    download_with_cn_filter,
+    get_cn_latest_start_time,
+    upload_activities_to_garmin_cn,
+)
 from strava_sync import run_strava_sync
 from stravaweblib import DataFormat, WebClient
 
@@ -82,6 +88,82 @@ async def upload_to_activities(
     return files_list
 
 
+def run_cn_mirror(garmin_com_wrapper):
+    """Mirror new COM activities to Garmin CN, reusing this process's COM login.
+
+    Garmin throttles fresh COM credential logins (roughly one per ~1.5-4h
+    window and each failed attempt extends the lockout), so the COM->CN mirror
+    must share the COM client that logged in for the Strava->COM upload instead
+    of logging in a second time. CN itself logs in via garth and is not
+    throttled.
+    """
+    cn_username = os.getenv("GARMIN_CN_USERNAME")
+    cn_password = os.getenv("GARMIN_CN_PASSWORD")
+    if not cn_username or not cn_password:
+        print("[mirror] GARMIN_CN_USERNAME/GARMIN_CN_PASSWORD not set — skip CN mirror")
+        return
+
+    garmin_cn_client = restore_or_login(cn_username, cn_password, "CN")
+    print("[mirror] Garmin CN login successful")
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        cn_latest_start_time = loop.run_until_complete(
+            get_cn_latest_start_time(garmin_cn_client)
+        )
+        print(
+            f"[mirror] CN latest activity start time: {cn_latest_start_time or 'None'}"
+        )
+
+        future = asyncio.ensure_future(
+            download_with_cn_filter(
+                garmin_com_wrapper,
+                False,
+                FIT_FOLDER,
+                "tcx",
+                since_start_time=cn_latest_start_time,
+            )
+        )
+        loop.run_until_complete(future)
+        new_ids, id2title, id2type, id2start_time = future.result()
+
+        to_upload_files = []
+        for i in new_ids:
+            fit_path = os.path.join(FIT_FOLDER, f"{i}.fit")
+            tcx_path = os.path.join(TCX_FOLDER, f"{i}.tcx")
+            gpx_path = os.path.join(GPX_FOLDER, f"{i}.gpx")
+            if os.path.exists(fit_path) and os.path.getsize(fit_path) > 1000:
+                print(f"[mirror] Will upload .fit: {i}")
+                to_upload_files.append(fit_path)
+            elif os.path.exists(tcx_path) and os.path.getsize(tcx_path) > 1000:
+                print(f"[mirror] Will upload .tcx: {i}")
+                to_upload_files.append(tcx_path)
+            elif os.path.exists(gpx_path):
+                print(f"[mirror] Will upload .gpx: {i}")
+                to_upload_files.append(gpx_path)
+
+        if not to_upload_files:
+            print("[mirror] No new activities to upload to CN.")
+            return
+
+        print(f"[mirror] Uploading {len(to_upload_files)} activities to Garmin CN...")
+        garmin_cn_wrapper = Garmin(garmin_cn_client, "CN", False)
+        upload_future = asyncio.ensure_future(
+            upload_activities_to_garmin_cn(
+                garmin_cn_wrapper,
+                to_upload_files,
+                id2title,
+                id2type,
+                id2start_time,
+            )
+        )
+        loop.run_until_complete(upload_future)
+        print("[mirror] Upload completed!")
+    finally:
+        loop.close()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("strava_client_id", help="strava client id")
@@ -107,8 +189,19 @@ if __name__ == "__main__":
         default=False,
         help="whether to use a faked Garmin device",
     )
-    # Note: is_cn removed - strava_to_garmin_sync now only syncs to COM (Garmin International).
-    # For CN sync, run garmin_sync_global_cn.py separately after COM sync completes.
+    parser.add_argument(
+        "--with-cn-mirror",
+        dest="with_cn_mirror",
+        action="store_true",
+        default=False,
+        help="after uploading to COM, mirror new COM activities to Garmin CN "
+        "reusing the same COM login (CN credentials via GARMIN_CN_USERNAME/"
+        "GARMIN_CN_PASSWORD env). One fresh COM login per run — see note below",
+    )
+    # Note: COM credential logins are heavily throttled by Garmin (roughly one
+    # fresh login per ~1.5-4h window per account, and each failed attempt
+    # extends the lockout). That is why the CN mirror must reuse this
+    # process's COM login instead of running as a second login somewhere else.
     options = parser.parse_args()
 
     print("[main] STRAVA_TO_GARMIN_SYNC START - syncing to COM (Garmin International)")
@@ -252,6 +345,7 @@ if __name__ == "__main__":
         print(f"[main] Garmin login failed: {err}")
         garmin_client = None
 
+    garmin_wrapper = None
     if garmin_client is None:
         print("[main] Skipping upload_to_activities (no garmin client)")
     else:
@@ -273,6 +367,17 @@ if __name__ == "__main__":
             print(f"[main] Upload to activities failed: {err}")
         finally:
             loop.close()
+
+    # Step 4: mirror new COM activities down to Garmin CN with the SAME COM
+    # login (a second fresh COM login would trip Garmin's throttle).
+    if options.with_cn_mirror:
+        if garmin_wrapper is None:
+            print("[mirror] Skip CN mirror (no COM client)")
+        else:
+            try:
+                run_cn_mirror(garmin_wrapper)
+            except Exception as err:
+                print(f"[mirror] CN mirror failed: {err}")
 
     print("[main] Running strava sync...")
     run_strava_sync(
