@@ -44,6 +44,9 @@ def _save_geocode_cache(cache):
         pass
 
 
+_geocode_debug = {"miss_printed": False, "none_printed": False}
+
+
 # random user name 8 letters
 def randomword():
     letters = string.ascii_lowercase
@@ -156,6 +159,12 @@ def update_or_create_activity(session, run_activity):
                 if cache_key in geocode_cache:
                     location_country = geocode_cache[cache_key]
                 else:
+                    if not _geocode_debug["miss_printed"]:
+                        print(
+                            f"[geocode] miss: key={cache_key} "
+                            f"start={start_point!r} cache_size={len(geocode_cache)}"
+                        )
+                        _geocode_debug["miss_printed"] = True
                     try:
                         location_country = str(
                             g.reverse(
@@ -168,6 +177,9 @@ def update_or_create_activity(session, run_activity):
                         _save_geocode_cache(geocode_cache)
                     except Exception:  # noqa: BLE001
                         pass
+            elif not location_country and not _geocode_debug["none_printed"]:
+                print(f"[geocode] no start_point on {run_activity.id}")
+                _geocode_debug["none_printed"] = True
 
             activity = Activity(
                 run_id=run_activity.id,
