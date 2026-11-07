@@ -731,7 +731,24 @@ if __name__ == "__main__":
     if not os.path.exists(folder):
         os.mkdir(folder)
 
-    # Step 1: Login to Garmin CN
+    # Step 1: Login to Garmin COM FIRST. Garmin's risk engine bot-challenges a
+    # COM login that follows a garmin.cn login from the same IP within minutes
+    # (observed 4/4 failures with CN-first ordering, 3/3 successes when COM is
+    # the process's first Garmin contact) — so COM must log in before CN.
+    garmin_com_client = None
+    try:
+        print("[main] Logging in to Garmin COM (International)...")
+        garmin_com_client = restore_or_login(com_username, com_password, "COM")
+        print("[main] Garmin COM login successful")
+    except Exception as err:
+        print(f"[main] Garmin COM login failed: {err}")
+        garmin_com_client = None
+
+    if garmin_com_client is None:
+        print("[main] Cannot proceed without COM client. Exiting.")
+        sys.exit(1)
+
+    # Step 2: Login to Garmin CN
     garmin_cn_client = None
     try:
         print("[main] Logging in to Garmin CN...")
@@ -745,27 +762,13 @@ if __name__ == "__main__":
         print("[main] Cannot proceed without CN client. Exiting.")
         sys.exit(1)
 
-    # Step 2: Get CN latest activity start time (for time-window filtering)
+    # Step 3: Get CN latest activity start time (for time-window filtering)
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     cn_latest_start_time = loop.run_until_complete(
         get_cn_latest_start_time(garmin_cn_client)
     )
     print(f"CN latest activity start time: {cn_latest_start_time or 'None'}")
-
-    # Step 3: Login to Garmin COM and download new activities
-    garmin_com_client = None
-    try:
-        print("[main] Logging in to Garmin COM (International)...")
-        garmin_com_client = restore_or_login(com_username, com_password, "COM")
-        print("[main] Garmin COM login successful")
-    except Exception as err:
-        print(f"[main] Garmin COM login failed: {err}")
-        garmin_com_client = None
-
-    if garmin_com_client is None:
-        print("[main] Cannot proceed without COM client. Exiting.")
-        sys.exit(1)
 
     # Step 4: Download COM activities newer than CN latest
     future = asyncio.ensure_future(
