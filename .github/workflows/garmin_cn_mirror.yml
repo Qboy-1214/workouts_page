@@ -110,5 +110,6 @@ jobs:
     with:
       save_data_in_github_cache: false
       data_cache_prefix: 'track_data'
+    secrets: inherit
     needs:
       - mirror

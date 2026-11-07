@@ -371,5 +371,6 @@ jobs:
     with:
       save_data_in_github_cache: false
       data_cache_prefix: ${{needs.sync.outputs.DATA_CACHE_PREFIX}}
+    secrets: inherit
     needs:
       - sync
