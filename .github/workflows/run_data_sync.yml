@@ -53,6 +53,7 @@ jobs:
       SAVE_DATA_IN_GITHUB_CACHE: ${{ steps.set_output.outputs.SAVE_DATA_IN_GITHUB_CACHE }}
       DATA_CACHE_PREFIX: ${{ steps.set_output.outputs.DATA_CACHE_PREFIX }}
       BUILD_GH_PAGES: ${{ steps.set_output.outputs.BUILD_GH_PAGES }}
+      deploy_ready: ${{ steps.deploy_ready.outputs.ready }}
     env:
       GARMIN_COM_USERNAME: ${{ secrets.GARMIN_COM_USERNAME }}
       GARMIN_COM_PASSWORD: ${{ secrets.GARMIN_COM_PASSWORD }}
@@ -207,11 +208,22 @@ jobs:
         run: |
           python run_page/tcx_sync.py
 
+      # Step 3: backup Strava activities to Garmin COM. Failure-tolerant on
+      # purpose: Garmin throttles logins aggressively, and a failed backup must
+      # never block the Pages deploy (step 2) — pages deploy runs right after
+      # the push step below regardless of this step's outcome.
       - name: Run sync Strava to Garmin(Run with strava(or others upload to strava) data backup in Garmin)
+        id: garmin_com_upload
+        continue-on-error: true
         # if: env.RUN_TYPE == 'strava_to_garmin'
         run: |
           python run_page/strava_to_garmin_sync.py ${{ secrets.STRAVA_CLIENT_ID }} ${{ secrets.STRAVA_CLIENT_SECRET }} ${{ secrets.STRAVA_CLIENT_REFRESH_TOKEN }} "" "" ${{ secrets.STRAVA_JWT }}
-        # Note: syncs to Garmin International (COM) only. For China, use garmin_sync_global_cn after this.
+        # Note: syncs to Garmin International (COM) only. For China, the mirror
+        # workflow (garmin_cn_mirror.yml) runs on an offset schedule.
+
+      - name: Report COM upload status
+        if: steps.garmin_com_upload.outcome == 'failure'
+        run: echo "::warning::Strava->Garmin COM upload failed (likely Garmin login throttle). Pages deploy continues with Strava data only; COM backup will retry on the next run."
 
       # Note: COM->CN mirror moved to its own workflow (garmin_cn_mirror.yml) on an
       # offset schedule — Garmin only allows one fresh COM credential login per
@@ -324,6 +336,12 @@ jobs:
           git commit -m 'Add new workouts' || echo 'nothing to commit'
           git push || echo 'nothing to push'
 
+      # Step 2 marker: from here on, the Strava-organized data is committed and
+      # the Pages deploy may proceed no matter what the Garmin steps did.
+      - name: Mark data ready for deploy
+        id: deploy_ready
+        run: echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Save Garmin login tokens
         if: always()
         uses: actions/cache/save@v4
@@ -345,7 +363,9 @@ jobs:
           echo "BUILD_GH_PAGES=$BUILD_GH_PAGES" >> "$GITHUB_OUTPUT"
 
   publish_github_pages:
-    if: needs.sync.result == 'success' && needs.sync.outputs.BUILD_GH_PAGES == 'true'
+    # Step 2: deploy with the Strava-organized data as soon as it's committed —
+    # independent of the (failure-tolerant) Garmin backup steps.
+    if: always() && needs.sync.outputs.deploy_ready == 'true' && needs.sync.outputs.BUILD_GH_PAGES == 'true'
     name: Build and publish Github Pages
     uses: ./.github/workflows/gh-pages.yml
     with:
