@@ -4,6 +4,8 @@ import os
 import random
 import string
 
+import polyline as mod_polyline
+
 from config import TYPE_DICT
 from geopy.geocoders import Nominatim, options
 from sqlalchemy import (
@@ -152,7 +154,19 @@ def update_or_create_activity(session, run_activity):
 
         if not activity:
             location_country = getattr(run_activity, "location_country", "")
-            start_point = run_activity.start_latlng
+            start_point = getattr(run_activity, "start_latlng", None)
+            if not location_country and not start_point:
+                # stravalib 2.x SummaryActivity carries no start_latlng (the
+                # list endpoint omits it) — fall back to the first point of
+                # the GPS polyline, which matches the geocode cache keys.
+                act_map = getattr(run_activity, "map", None)
+                sp_poly = getattr(act_map, "summary_polyline", None)
+                if sp_poly:
+                    try:
+                        lat, lon = mod_polyline.decode(sp_poly)[0]
+                        start_point = type("StartPoint", (), {"lat": lat, "lon": lon})()
+                    except Exception:  # noqa: BLE001
+                        start_point = None
             if not location_country and start_point:
                 cache_key = f"{start_point.lat:.3f},{start_point.lon:.3f}"
                 geocode_cache = _load_geocode_cache()
