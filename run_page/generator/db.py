@@ -1,4 +1,5 @@
 import datetime
+import atexit
 import json
 import os
 import random
@@ -47,6 +48,21 @@ def _save_geocode_cache(cache):
 
 
 _geocode_debug = {"miss_printed": False, "none_printed": False}
+_geocode_stats = {
+    "create": 0,
+    "update": 0,
+    "hit": 0,
+    "miss": 0,
+    "no_start": 0,
+    "nom_ok": 0,
+}
+
+
+def _print_geocode_stats():
+    print(f"[geocode] stats: {_geocode_stats}")
+
+
+atexit.register(_print_geocode_stats)
 
 
 # random user name 8 letters
@@ -111,7 +127,7 @@ class Activity(Base):
         return out
 
 
-def _resolve_location_country(run_activity):
+def _resolve_location_country(run_activity, branch):
     """Resolve location_country for an activity: attribute → geocode cache → Nominatim.
 
     Used by BOTH the create and update branches of update_or_create_activity:
@@ -119,6 +135,7 @@ def _resolve_location_country(run_activity):
     update branch — geocoding must live in a shared helper or new location
     data would never be backfilled.
     """
+    _geocode_stats[branch] += 1
     location_country = getattr(run_activity, "location_country", "") or ""
     start_point = getattr(run_activity, "start_latlng", None)
     if not location_country and not start_point:
@@ -137,7 +154,9 @@ def _resolve_location_country(run_activity):
         cache_key = f"{start_point.lat:.3f},{start_point.lon:.3f}"
         geocode_cache = _load_geocode_cache()
         if cache_key in geocode_cache:
+            _geocode_stats["hit"] += 1
             return geocode_cache[cache_key]
+        _geocode_stats["miss"] += 1
         if not _geocode_debug["miss_printed"]:
             print(
                 f"[geocode] miss: key={cache_key} "
@@ -154,12 +173,12 @@ def _resolve_location_country(run_activity):
             )
             geocode_cache[cache_key] = location_country
             _save_geocode_cache(geocode_cache)
+            _geocode_stats["nom_ok"] += 1
             return location_country
         except Exception:  # noqa: BLE001
             pass
-    elif not location_country and not _geocode_debug["none_printed"]:
-        print(f"[geocode] no start_point on {getattr(run_activity, 'id', '?')}")
-        _geocode_debug["none_printed"] = True
+    elif not location_country:
+        _geocode_stats["no_start"] += 1
     return location_country
 
 
@@ -205,7 +224,7 @@ def update_or_create_activity(session, run_activity):
         )
 
         if not activity:
-            location_country = _resolve_location_country(run_activity)
+            location_country = _resolve_location_country(run_activity, "create")
 
             activity = Activity(
                 run_id=run_activity.id,
@@ -243,7 +262,9 @@ def update_or_create_activity(session, run_activity):
             # Backfill location for rows created before geocoding existed —
             # data.db is committed between runs, so this branch is the hot path.
             if not activity.location_country:
-                activity.location_country = _resolve_location_country(run_activity)
+                activity.location_country = _resolve_location_country(
+                    run_activity, "update"
+                )
     except Exception as e:  # noqa: BLE001
         print(f"something wrong with {run_activity.id}")
         print(str(e))
