@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import * as polyline from '@mapbox/polyline';
 import type { Activity } from '../types';
 import { hasRoute, routeForActivity } from '../core/routeFallback';
-import { MAPBOX_TOKEN } from '../config';
 import { useLocale } from '../hooks/useLocale';
 import './RouteMap.css';
 
@@ -36,19 +35,20 @@ export function RouteMapCanvas({
   const zh = locale === 'zh';
   const panelRef = useRef<HTMLElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
   const styleReadyRef = useRef(false);
-  const cameraRef = useRef<mapboxgl.CameraOptions | null>(null);
+  const cameraRef = useRef<maplibregl.CameraOptions | null>(null);
   const fittedRef = useRef<unknown>(null);
-  const [provider, setProvider] = useState(MAPBOX_TOKEN ? 'mapbox' : 'carto');
+  const [retry, setRetry] = useState(0);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>(
     'loading'
   );
-  const [retry, setRetry] = useState(0);
+  // OpenFreeMap 底图：免费、无 token、国内可直连（与旧版站点相同的供应商）。
+  // mapbox://styles 依赖 api.mapbox.com，在中国大陆极不稳定，故不再使用。
   const style =
-    provider === 'mapbox'
-      ? `mapbox://styles/mapbox/${dark === false ? 'light' : 'dark'}-v11`
-      : `https://basemaps.cartocdn.com/gl/${dark === false ? 'positron' : 'dark-matter'}-gl-style/style.json`;
+    dark === false
+      ? 'https://tiles.openfreemap.org/styles/positron'
+      : 'https://tiles.openfreemap.org/styles/dark';
 
   const displayActivity = useMemo(
     () =>
@@ -98,7 +98,7 @@ export function RouteMapCanvas({
   }, [activities, selectedActivity, displayActivity]);
 
   const routeBounds = useMemo(() => {
-    const bounds = new mapboxgl.LngLatBounds();
+    const bounds = new maplibregl.LngLatBounds();
     for (const route of routes) {
       for (const coord of route.geometry.coordinates)
         bounds.extend(coord as [number, number]);
@@ -123,7 +123,7 @@ export function RouteMapCanvas({
     if (!map || !styleReadyRef.current) return;
     const data = { type: 'FeatureCollection' as const, features: routes };
     const source = map.getSource('routes') as
-      mapboxgl.GeoJSONSource | undefined;
+      maplibregl.GeoJSONSource | undefined;
     if (source) source.setData(data);
     else {
       map.addSource('routes', { type: 'geojson', data });
@@ -155,34 +155,24 @@ export function RouteMapCanvas({
 
   useEffect(() => {
     if (!containerRef.current || !panelRef.current) return;
-    const map = new mapboxgl.Map({
+    const map = new maplibregl.Map({
       container: containerRef.current,
-      accessToken: MAPBOX_TOKEN,
-      language: zh ? 'zh-Hans' : 'en',
       style: { version: 8, sources: {}, layers: [] },
       center: [121.4, 31.2],
       zoom: 10,
+      // 中文/日文等表意文字用本地字体渲染，避免依赖远程字体服务
+      localIdeographFontFamily: 'sans-serif',
+      attributionControl: { compact: true },
       ...cameraRef.current,
-      locale: zh
-        ? {
-            'Map.Title': '跑步路线地图',
-            'NavigationControl.ZoomIn': '放大',
-            'NavigationControl.ZoomOut': '缩小',
-            'NavigationControl.ResetBearing': '恢复朝北',
-            'FullscreenControl.Enter': '全屏查看',
-            'FullscreenControl.Exit': '退出全屏',
-            'AttributionControl.ToggleAttribution': '地图来源',
-          }
-        : {},
     });
     mapRef.current = map;
-    map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.addControl(new maplibregl.NavigationControl(), 'top-right');
     map.addControl(
-      new mapboxgl.FullscreenControl({ container: panelRef.current }),
+      new maplibregl.FullscreenControl({ container: panelRef.current }),
       'top-right'
     );
     map.addControl(
-      new mapboxgl.ScaleControl({ unit: 'metric', maxWidth: 90 }),
+      new maplibregl.ScaleControl({ unit: 'metric', maxWidth: 90 }),
       'bottom-left'
     );
     const observer = new ResizeObserver(() => map.resize());
@@ -198,34 +188,24 @@ export function RouteMapCanvas({
       map.remove();
       mapRef.current = null;
     };
-  }, [zh]);
+  }, []);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     let failed = false;
-    const onError = (event: mapboxgl.ErrorEvent) => {
-      const code = (event.error as Error & { status?: number }).status;
-      if (provider === 'mapbox' && (code === 401 || code === 403)) {
-        setProvider('carto');
-      } else {
-        failed = true;
-        setStatus('error');
-      }
+    const onError = () => {
+      failed = true;
+      setStatus('error');
     };
     const onIdle = () => {
       if (!failed) setStatus('ready');
     };
-    const onLoading = () => setStatus('loading');
     map.on('error', onError);
     map.on('idle', onIdle);
-    map.once('styledataloading', onLoading);
     styleReadyRef.current = false;
-    map.setStyle(style, {
-      diff: false,
-      localFontFamily: undefined,
-      localIdeographFontFamily: 'sans-serif',
-    });
+    setStatus('loading');
+    map.setStyle(style);
     const timer = window.setTimeout(() => {
       if (!map.isStyleLoaded()) setStatus('error');
     }, 15000);
@@ -233,9 +213,8 @@ export function RouteMapCanvas({
       window.clearTimeout(timer);
       map.off('error', onError);
       map.off('idle', onIdle);
-      map.off('styledataloading', onLoading);
     };
-  }, [style, provider, retry, zh]);
+  }, [style, retry]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -249,7 +228,7 @@ export function RouteMapCanvas({
     return () => {
       map.off('style.load', onStyleLoad);
     };
-  }, [drawRoutes, style, retry, zh]);
+  }, [drawRoutes, style, retry]);
 
   useEffect(() => {
     let wasFullscreen = document.fullscreenElement === panelRef.current;
@@ -340,29 +319,16 @@ export function RouteMapCanvas({
               ? zh
                 ? '正在加载地图…'
                 : 'Loading map…'
-              : provider === 'carto'
-                ? zh
-                  ? '备用底图 · CARTO'
-                  : 'Alternative basemap · CARTO'
-                : zh
-                  ? '底图 · Mapbox'
-                  : 'Basemap · Mapbox'}
+              : zh
+                ? '底图 · OpenFreeMap'
+                : 'Basemap · OpenFreeMap'}
         </span>
-        {(status === 'error' || (provider === 'carto' && !!MAPBOX_TOKEN)) && (
+        {status === 'error' && (
           <button
             className="route-map-action"
-            onClick={() => {
-              setProvider(MAPBOX_TOKEN ? 'mapbox' : 'carto');
-              setRetry((value) => value + 1);
-            }}
+            onClick={() => setRetry((value) => value + 1)}
           >
-            {provider === 'carto' && MAPBOX_TOKEN
-              ? zh
-                ? '重试 Mapbox'
-                : 'Retry Mapbox'
-              : zh
-                ? '重试'
-                : 'Retry'}
+            {zh ? '重试' : 'Retry'}
           </button>
         )}
       </div>

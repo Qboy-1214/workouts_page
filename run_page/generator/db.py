@@ -125,26 +125,29 @@ def update_or_create_activity(session, run_activity):
 
         if not activity:
             location_country = getattr(run_activity, "location_country", "")
-            # TODO: Temporarily disabled due to slow OpenStreetMap queries
-            # # or China for #176 to fix
-            # if not location_country and start_point or location_country == "China":
-            #     try:
-            #         location_country = str(
-            #             g.reverse(
-            #                 f"{start_point.lat}, {start_point.lon}", language="zh-CN"  # type: ignore
-            #             )
-            #         )
-            #     # limit (only for the first time)
-            #     except Exception:
-            #         try:
-            #             location_country = str(
-            #                 g.reverse(
-            #                     f"{start_point.lat}, {start_point.lon}",
-            #                     language="zh-CN",  # type: ignore
-            #                 )
-            #             )
-            #         except Exception:
-            #             pass
+            start_point = run_activity.start_latlng
+            # or China for #176 to fix
+            if not location_country and start_point or location_country == "China":
+                try:
+                    location_country = str(
+                        g.reverse(
+                            f"{start_point.lat}, {start_point.lon}",
+                            language="zh-CN",  # type: ignore
+                            timeout=15,
+                        )
+                    )
+                # limit (only for the first time)
+                except Exception:  # noqa: BLE001
+                    try:
+                        location_country = str(
+                            g.reverse(
+                                f"{start_point.lat}, {start_point.lon}",
+                                language="zh-CN",  # type: ignore
+                                timeout=15,
+                            )
+                        )
+                    except Exception:  # noqa: S110, BLE001
+                        pass
 
             activity = Activity(
                 run_id=run_activity.id,

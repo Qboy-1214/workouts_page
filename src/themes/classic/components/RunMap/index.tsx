@@ -1,4 +1,3 @@
-import MapboxLanguage from '@mapbox/mapbox-gl-language';
 import React, {
   useRef,
   useCallback,
@@ -13,12 +12,11 @@ import Map, {
   NavigationControl,
   MapRef,
   MapInstance,
-} from 'react-map-gl/mapbox';
+} from 'react-map-gl/maplibre';
 import useActivities from '../../hooks/useActivities';
 import {
   IS_CHINESE,
   ROAD_LABEL_DISPLAY,
-  MAPBOX_TOKEN,
   PROVINCE_FILL_COLOR,
   COUNTRY_FILL_COLOR,
   USE_DASH_LINE,
@@ -91,10 +89,6 @@ const RunMap = ({
     () => getMapStyle(MAP_TILE_VENDOR, currentMapTheme, MAP_TILE_ACCESS_TOKEN),
     [currentMapTheme]
   );
-
-  // Mapbox GL JS requires a token even when using other vendors
-  // Always use the MAPBOX_TOKEN from const.ts (user may have set their own token)
-  const mapboxAccessToken = MAPBOX_TOKEN;
 
   /**
    * Toggle visibility of map layers based on lights setting
@@ -249,7 +243,7 @@ const RunMap = ({
       if (ref !== null) {
         const map = ref.getMap();
         if (map && IS_CHINESE) {
-          map.addControl(new MapboxLanguage({ defaultLanguage: 'zh-Hans' }));
+          // maplibre 无 MapboxLanguage 插件，中文标注由 openfreemap 瓦片自带
         }
         // all style resources have been downloaded
         // and the first visually complete rendering of the base style has occurred.
@@ -449,7 +443,6 @@ const RunMap = ({
       mapStyle={mapStyle}
       ref={mapRefCallback}
       cooperativeGestures={isTouchDevice()}
-      mapboxAccessToken={mapboxAccessToken}
     >
       {mapError && (
         <div className={styles.mapErrorNotification}>
