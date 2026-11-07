@@ -4,6 +4,7 @@ import json
 import os
 import random
 import string
+import urllib.request
 
 import polyline as mod_polyline
 
@@ -55,7 +56,25 @@ _geocode_stats = {
     "miss": 0,
     "no_start": 0,
     "nom_ok": 0,
+    "photon_ok": 0,
 }
+
+
+def _photon_reverse(lat, lon):
+    """Reverse geocode via photon.komoot.io.
+
+    Free, no API key, and reachable from GitHub runners — unlike
+    nominatim.openstreetmap.org, which blocks datacenter IPs. Returns a
+    "省, 国" style string (photon's default language uses OSM's local
+    names, so Chinese coords come back as e.g. "福建省, 中国").
+    """
+    url = f"https://photon.komoot.io/reverse?lat={lat}&lon={lon}"
+    with urllib.request.urlopen(url, timeout=15) as r:
+        d = json.load(r)
+    features = d.get("features") or []
+    props = features[0].get("properties", {}) if features else {}
+    parts = [p for p in (props.get("state"), props.get("country")) if p]
+    return ", ".join(parts) or None
 
 
 def _print_geocode_stats():
@@ -175,6 +194,18 @@ def _resolve_location_country(run_activity, branch):
             _save_geocode_cache(geocode_cache)
             _geocode_stats["nom_ok"] += 1
             return location_country
+        except Exception:  # noqa: BLE001
+            pass
+        # Nominatim blocks datacenter IPs — fall back to photon, which is
+        # reachable from GitHub runners (this is the path new activities
+        # take in CI; local runs resolve via Nominatim above).
+        try:
+            location_country = _photon_reverse(start_point.lat, start_point.lon)
+            if location_country:
+                geocode_cache[cache_key] = location_country
+                _save_geocode_cache(geocode_cache)
+                _geocode_stats["photon_ok"] += 1
+                return location_country
         except Exception:  # noqa: BLE001
             pass
     elif not location_country:
