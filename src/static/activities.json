@@ -1741,7 +1741,7 @@
 "average_speed": 3.375,
 "elevation_gain": 31.7,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 14381164679,
@@ -1757,7 +1757,7 @@
 "average_speed": 3.434,
 "elevation_gain": 38.0,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 14381164818,
@@ -2125,7 +2125,7 @@
 "average_speed": 3.432,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 24
+"streak": 23
 },
 {
 "run_id": 14621947302,
@@ -2141,7 +2141,7 @@
 "average_speed": 6.202,
 "elevation_gain": 24.3,
 "source": "strava",
-"streak": 25
+"streak": 1
 },
 {
 "run_id": 14626036308,
@@ -2157,7 +2157,7 @@
 "average_speed": 5.834,
 "elevation_gain": 50.9,
 "source": "strava",
-"streak": 26
+"streak": 2
 },
 {
 "run_id": 14630679801,
@@ -2173,7 +2173,7 @@
 "average_speed": 4.35,
 "elevation_gain": 22.2,
 "source": "strava",
-"streak": 27
+"streak": 2
 },
 {
 "run_id": 14637763056,
@@ -2189,7 +2189,7 @@
 "average_speed": 5.952,
 "elevation_gain": 218.8,
 "source": "strava",
-"streak": 27
+"streak": 3
 },
 {
 "run_id": 14658235605,
@@ -2269,7 +2269,7 @@
 "average_speed": 3.479,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 5
+"streak": 4
 },
 {
 "run_id": 14699614531,
@@ -2365,7 +2365,7 @@
 "average_speed": 4.068,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 4
+"streak": 3
 },
 {
 "run_id": 14749954542,
@@ -2605,7 +2605,7 @@
 "average_speed": 0.0,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 14927112511,
@@ -2877,7 +2877,7 @@
 "average_speed": 0.257,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 15873622232,
@@ -3117,7 +3117,7 @@
 "average_speed": 4.801,
 "elevation_gain": 30.8,
 "source": "strava",
-"streak": 3
+"streak": 2
 },
 {
 "run_id": 16132535488,
@@ -3165,7 +3165,7 @@
 "average_speed": 4.923,
 "elevation_gain": 31.2,
 "source": "strava",
-"streak": 5
+"streak": 4
 },
 {
 "run_id": 16155323529,
@@ -3197,7 +3197,7 @@
 "average_speed": 5.528,
 "elevation_gain": 32.2,
 "source": "strava",
-"streak": 6
+"streak": 5
 },
 {
 "run_id": 16165831312,
@@ -3229,7 +3229,7 @@
 "average_speed": 4.629,
 "elevation_gain": 32.3,
 "source": "strava",
-"streak": 7
+"streak": 6
 },
 {
 "run_id": 16256989531,
@@ -3261,7 +3261,7 @@
 "average_speed": 3.678,
 "elevation_gain": 4.9,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 16247384970,
@@ -3309,7 +3309,7 @@
 "average_speed": 4.942,
 "elevation_gain": 31.1,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 16347593708,
@@ -3341,7 +3341,7 @@
 "average_speed": 5.101,
 "elevation_gain": 39.2,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 16358777220,
@@ -3373,7 +3373,7 @@
 "average_speed": 5.257,
 "elevation_gain": 36.3,
 "source": "strava",
-"streak": 3
+"streak": 2
 },
 {
 "run_id": 16410792847,
@@ -3405,7 +3405,7 @@
 "average_speed": 5.435,
 "elevation_gain": 49.2,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 16441516651,
@@ -3437,7 +3437,7 @@
 "average_speed": 5.061,
 "elevation_gain": 48.6,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 16481282209,
@@ -3469,7 +3469,7 @@
 "average_speed": 5.346,
 "elevation_gain": 31.2,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 16520521293,
@@ -3501,7 +3501,7 @@
 "average_speed": 5.048,
 "elevation_gain": 48.5,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 16520521291,
@@ -3533,7 +3533,7 @@
 "average_speed": 5.307,
 "elevation_gain": 49.0,
 "source": "strava",
-"streak": 3
+"streak": 2
 },
 {
 "run_id": 16552919067,
@@ -3565,7 +3565,7 @@
 "average_speed": 5.52,
 "elevation_gain": 48.3,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 16562171697,
@@ -3581,7 +3581,7 @@
 "average_speed": 0.333,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 3
+"streak": 2
 },
 {
 "run_id": 16568097895,
@@ -3613,7 +3613,7 @@
 "average_speed": 5.158,
 "elevation_gain": 47.9,
 "source": "strava",
-"streak": 4
+"streak": 3
 },
 {
 "run_id": 16577995158,
@@ -3645,7 +3645,7 @@
 "average_speed": 4.952,
 "elevation_gain": 51.4,
 "source": "strava",
-"streak": 5
+"streak": 4
 },
 {
 "run_id": 16587763944,
@@ -3677,7 +3677,7 @@
 "average_speed": 5.312,
 "elevation_gain": 48.1,
 "source": "strava",
-"streak": 6
+"streak": 5
 },
 {
 "run_id": 16598025423,
@@ -3725,7 +3725,7 @@
 "average_speed": 5.423,
 "elevation_gain": 51.7,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 16629100441,
@@ -3741,7 +3741,7 @@
 "average_speed": 0.26,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 3
+"streak": 2
 },
 {
 "run_id": 16634432128,
@@ -3773,7 +3773,7 @@
 "average_speed": 5.273,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 4
+"streak": 3
 },
 {
 "run_id": 16644197347,
@@ -3805,7 +3805,7 @@
 "average_speed": 6.469,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 5
+"streak": 4
 },
 {
 "run_id": 16667564941,
@@ -3821,7 +3821,7 @@
 "average_speed": 0.42,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 6
+"streak": 1
 },
 {
 "run_id": 16667560386,
@@ -3837,7 +3837,7 @@
 "average_speed": 0.221,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 7
+"streak": 1
 },
 {
 "run_id": 16672256070,
@@ -3853,7 +3853,7 @@
 "average_speed": 0.423,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 7
+"streak": 2
 },
 {
 "run_id": 16690962381,
@@ -3869,7 +3869,7 @@
 "average_speed": 5.091,
 "elevation_gain": 43.1,
 "source": "strava",
-"streak": 8
+"streak": 3
 },
 {
 "run_id": 16690962331,
@@ -3885,7 +3885,7 @@
 "average_speed": 5.368,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 9
+"streak": 3
 },
 {
 "run_id": 16694405367,
@@ -3901,7 +3901,7 @@
 "average_speed": 0.212,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 10
+"streak": 4
 },
 {
 "run_id": 16722761725,
@@ -3917,7 +3917,7 @@
 "average_speed": 3.469,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 11
+"streak": 1
 },
 {
 "run_id": 16722886706,
@@ -3933,7 +3933,7 @@
 "average_speed": 4.162,
 "elevation_gain": 225.8,
 "source": "strava",
-"streak": 11
+"streak": 1
 },
 {
 "run_id": 16722762293,
@@ -3949,7 +3949,7 @@
 "average_speed": 1.028,
 "elevation_gain": 199.1,
 "source": "strava",
-"streak": 12
+"streak": 2
 },
 {
 "run_id": 16722763058,
@@ -3965,7 +3965,7 @@
 "average_speed": 0.783,
 "elevation_gain": 135.3,
 "source": "strava",
-"streak": 12
+"streak": 2
 },
 {
 "run_id": 16745559756,
@@ -3981,7 +3981,7 @@
 "average_speed": 1.426,
 "elevation_gain": 2.2,
 "source": "strava",
-"streak": 13
+"streak": 3
 },
 {
 "run_id": 16745558674,
@@ -3997,7 +3997,7 @@
 "average_speed": 0.79,
 "elevation_gain": 32.4,
 "source": "strava",
-"streak": 13
+"streak": 3
 },
 {
 "run_id": 16745559991,
@@ -4013,7 +4013,7 @@
 "average_speed": 0.845,
 "elevation_gain": 214.5,
 "source": "strava",
-"streak": 14
+"streak": 4
 },
 {
 "run_id": 16807988772,
@@ -4061,7 +4061,7 @@
 "average_speed": 0.247,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 16807988794,
@@ -4077,7 +4077,7 @@
 "average_speed": 5.187,
 "elevation_gain": 40.1,
 "source": "strava",
-"streak": 2
+"streak": 3
 },
 {
 "run_id": 16811654088,
@@ -4125,7 +4125,7 @@
 "average_speed": 4.821,
 "elevation_gain": 57.0,
 "source": "strava",
-"streak": 4
+"streak": 5
 },
 {
 "run_id": 16829493760,
@@ -4157,7 +4157,7 @@
 "average_speed": 4.919,
 "elevation_gain": 58.0,
 "source": "strava",
-"streak": 5
+"streak": 6
 },
 {
 "run_id": 16837240512,
@@ -4189,7 +4189,7 @@
 "average_speed": 5.266,
 "elevation_gain": 59.0,
 "source": "strava",
-"streak": 6
+"streak": 7
 },
 {
 "run_id": 16845064840,
@@ -4221,7 +4221,7 @@
 "average_speed": 0.434,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 7
+"streak": 8
 },
 {
 "run_id": 16852105064,
@@ -4253,7 +4253,7 @@
 "average_speed": 0.409,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 8
+"streak": 9
 },
 {
 "run_id": 16860857001,
@@ -4269,7 +4269,7 @@
 "average_speed": 0.566,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 8
+"streak": 9
 },
 {
 "run_id": 16883855638,
@@ -4365,7 +4365,7 @@
 "average_speed": 8.231,
 "elevation_gain": 60.5,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 17088527671,
@@ -4413,7 +4413,7 @@
 "average_speed": 9.278,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 17189482573,
@@ -4429,7 +4429,7 @@
 "average_speed": 0.356,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 2
+"streak": 3
 },
 {
 "run_id": 17272031494,
@@ -4573,7 +4573,7 @@
 "average_speed": 4.301,
 "elevation_gain": 42.3,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 17575562458,
@@ -4589,7 +4589,7 @@
 "average_speed": 5.106,
 "elevation_gain": 37.0,
 "source": "strava",
-"streak": 3
+"streak": 1
 },
 {
 "run_id": 17589567188,
@@ -4605,7 +4605,7 @@
 "average_speed": 0.25,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 4
+"streak": 2
 },
 {
 "run_id": 17595679317,
@@ -4621,7 +4621,7 @@
 "average_speed": 5.127,
 "elevation_gain": 42.7,
 "source": "strava",
-"streak": 4
+"streak": 3
 },
 {
 "run_id": 17600255355,
@@ -4637,7 +4637,7 @@
 "average_speed": 5.409,
 "elevation_gain": 36.0,
 "source": "strava",
-"streak": 5
+"streak": 3
 },
 {
 "run_id": 17602435132,
@@ -4653,7 +4653,7 @@
 "average_speed": 0.247,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 5
+"streak": 3
 },
 {
 "run_id": 17608163709,
@@ -4669,7 +4669,7 @@
 "average_speed": 4.1,
 "elevation_gain": 59.0,
 "source": "strava",
-"streak": 5
+"streak": 4
 },
 {
 "run_id": 17612218089,
@@ -4685,7 +4685,7 @@
 "average_speed": 5.355,
 "elevation_gain": 66.0,
 "source": "strava",
-"streak": 6
+"streak": 4
 },
 {
 "run_id": 17614634559,
@@ -4701,7 +4701,7 @@
 "average_speed": 0.253,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 6
+"streak": 4
 },
 {
 "run_id": 17619984099,
@@ -4717,7 +4717,7 @@
 "average_speed": 5.292,
 "elevation_gain": 55.0,
 "source": "strava",
-"streak": 6
+"streak": 5
 },
 {
 "run_id": 17624417813,
@@ -4733,7 +4733,7 @@
 "average_speed": 3.88,
 "elevation_gain": 1.0,
 "source": "strava",
-"streak": 7
+"streak": 5
 },
 {
 "run_id": 17632177472,
@@ -4749,7 +4749,7 @@
 "average_speed": 0.304,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 7
+"streak": 6
 },
 {
 "run_id": 17643958262,
@@ -4765,7 +4765,7 @@
 "average_speed": 0.265,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 8
+"streak": 7
 },
 {
 "run_id": 17655425877,
@@ -4781,7 +4781,7 @@
 "average_speed": 4.919,
 "elevation_gain": 55.0,
 "source": "strava",
-"streak": 9
+"streak": 8
 },
 {
 "run_id": 17659478895,
@@ -4797,7 +4797,7 @@
 "average_speed": 4.928,
 "elevation_gain": 67.0,
 "source": "strava",
-"streak": 10
+"streak": 8
 },
 {
 "run_id": 17672273087,
@@ -4813,7 +4813,7 @@
 "average_speed": 0.261,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 11
+"streak": 9
 },
 {
 "run_id": 17685012964,
@@ -4829,7 +4829,7 @@
 "average_speed": 0.598,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 12
+"streak": 10
 },
 {
 "run_id": 17692158368,
@@ -4845,7 +4845,7 @@
 "average_speed": 4.967,
 "elevation_gain": 39.0,
 "source": "strava",
-"streak": 12
+"streak": 11
 },
 {
 "run_id": 17696460312,
@@ -4861,7 +4861,7 @@
 "average_speed": 5.059,
 "elevation_gain": 29.5,
 "source": "strava",
-"streak": 13
+"streak": 11
 },
 {
 "run_id": 17709187803,
@@ -4877,7 +4877,7 @@
 "average_speed": 0.352,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 14
+"streak": 12
 },
 {
 "run_id": 17716745941,
@@ -4893,7 +4893,7 @@
 "average_speed": 0.252,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 14
+"streak": 13
 },
 {
 "run_id": 17716747975,
@@ -4909,7 +4909,7 @@
 "average_speed": 0.1,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 14
+"streak": 13
 },
 {
 "run_id": 17727514592,
@@ -4925,7 +4925,7 @@
 "average_speed": 0.163,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 15
+"streak": 14
 },
 {
 "run_id": 17743322932,
@@ -4941,7 +4941,7 @@
 "average_speed": 0.168,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 1
+"streak": 15
 },
 {
 "run_id": 17774593108,
@@ -4973,7 +4973,7 @@
 "average_speed": 5.039,
 "elevation_gain": 34.3,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 17787215353,
@@ -4989,7 +4989,7 @@
 "average_speed": 0.947,
 "elevation_gain": 2.0,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 17787216426,
@@ -5005,7 +5005,7 @@
 "average_speed": 0.85,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 17791723207,
@@ -5021,7 +5021,7 @@
 "average_speed": 5.241,
 "elevation_gain": 2.0,
 "source": "strava",
-"streak": 3
+"streak": 1
 },
 {
 "run_id": 17823084595,
@@ -5069,7 +5069,7 @@
 "average_speed": 4.853,
 "elevation_gain": 1.0,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 17840509118,
@@ -5085,7 +5085,7 @@
 "average_speed": 0.33,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 3
+"streak": 2
 },
 {
 "run_id": 17853152226,
@@ -5101,7 +5101,7 @@
 "average_speed": 0.639,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 4
+"streak": 3
 },
 {
 "run_id": 17853155711,
@@ -5117,7 +5117,7 @@
 "average_speed": 0.817,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 4
+"streak": 3
 },
 {
 "run_id": 17861524372,
@@ -5181,7 +5181,7 @@
 "average_speed": 5.566,
 "elevation_gain": 40.0,
 "source": "strava",
-"streak": 6
+"streak": 5
 },
 {
 "run_id": 17914214051,
@@ -5245,7 +5245,7 @@
 "average_speed": 0.746,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 3
+"streak": 4
 },
 {
 "run_id": 17970199824,
@@ -5341,7 +5341,7 @@
 "average_speed": 0.822,
 "elevation_gain": 2.1,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 18113944884,
@@ -5357,7 +5357,7 @@
 "average_speed": 0.978,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 2
+"streak": 3
 },
 {
 "run_id": 18120258350,
@@ -5389,7 +5389,7 @@
 "average_speed": 5.242,
 "elevation_gain": 63.0,
 "source": "strava",
-"streak": 3
+"streak": 4
 },
 {
 "run_id": 18127567010,
@@ -5405,7 +5405,7 @@
 "average_speed": 0.85,
 "elevation_gain": 5.6,
 "source": "strava",
-"streak": 3
+"streak": 4
 },
 {
 "run_id": 18132512832,
@@ -5437,7 +5437,7 @@
 "average_speed": 5.378,
 "elevation_gain": 57.0,
 "source": "strava",
-"streak": 4
+"streak": 5
 },
 {
 "run_id": 18145135884,
@@ -5469,7 +5469,7 @@
 "average_speed": 0.23,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 5
+"streak": 6
 },
 {
 "run_id": 18174827273,
@@ -5485,7 +5485,7 @@
 "average_speed": 0.208,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 6
+"streak": 7
 },
 {
 "run_id": 18199487649,
@@ -5581,7 +5581,7 @@
 "average_speed": 0.26,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 3
+"streak": 1
 },
 {
 "run_id": 18343599305,
@@ -5597,7 +5597,7 @@
 "average_speed": 0.224,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 4
+"streak": 2
 },
 {
 "run_id": 18355463812,
@@ -5613,7 +5613,7 @@
 "average_speed": 0.238,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 5
+"streak": 3
 },
 {
 "run_id": 18367624608,
@@ -5629,7 +5629,7 @@
 "average_speed": 0.225,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 6
+"streak": 4
 },
 {
 "run_id": 18373540894,
@@ -5645,7 +5645,7 @@
 "average_speed": 0.252,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 7
+"streak": 4
 },
 {
 "run_id": 18380451701,
@@ -5661,7 +5661,7 @@
 "average_speed": 0.327,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 7
+"streak": 5
 },
 {
 "run_id": 18400841183,
@@ -5677,7 +5677,7 @@
 "average_speed": 0.085,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 1
+"streak": 6
 },
 {
 "run_id": 18414037456,
@@ -5693,7 +5693,7 @@
 "average_speed": 0.135,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 2
+"streak": 7
 },
 {
 "run_id": 18477474012,
@@ -5757,7 +5757,7 @@
 "average_speed": 0.164,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 18661014280,
@@ -5821,7 +5821,7 @@
 "average_speed": 0.244,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 4
+"streak": 1
 },
 {
 "run_id": 18756000156,
@@ -5933,7 +5933,7 @@
 "average_speed": 0.308,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 18943111777,
@@ -5981,7 +5981,7 @@
 "average_speed": 0.27,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 3
+"streak": 1
 },
 {
 "run_id": 18991910110,
@@ -5997,7 +5997,7 @@
 "average_speed": 0.241,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 4
+"streak": 2
 },
 {
 "run_id": 19037552254,
@@ -6333,7 +6333,7 @@
 "average_speed": 0.373,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 3
+"streak": 1
 },
 {
 "run_id": 19656791805,
@@ -6349,7 +6349,7 @@
 "average_speed": 0.292,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 19696759729,
@@ -6445,7 +6445,7 @@
 "average_speed": 0.707,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 19922720380,
@@ -6461,7 +6461,7 @@
 "average_speed": 0.246,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 2
+"streak": 3
 },
 {
 "run_id": 20056013695,
@@ -6557,7 +6557,7 @@
 "average_speed": 5.797,
 "elevation_gain": 44.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 20144873889,
@@ -6653,7 +6653,7 @@
 "average_speed": 4.168,
 "elevation_gain": 53.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 20296152395,
@@ -6701,7 +6701,7 @@
 "average_speed": 0.959,
 "elevation_gain": 23.2,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 20429813287,
@@ -6829,7 +6829,7 @@
 "average_speed": 4.486,
 "elevation_gain": 64.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 20674954718,
@@ -6893,7 +6893,7 @@
 "average_speed": 4.34,
 "elevation_gain": 6.1,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 20751192908,
@@ -6909,7 +6909,7 @@
 "average_speed": 0.343,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 20751160846,
@@ -6925,7 +6925,7 @@
 "average_speed": 4.873,
 "elevation_gain": 13.0,
 "source": "strava",
-"streak": 2
+"streak": 1
 },
 {
 "run_id": 20759374217,
@@ -6957,7 +6957,7 @@
 "average_speed": 0.837,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 3
+"streak": 2
 },
 {
 "run_id": 20765335947,
@@ -6973,7 +6973,7 @@
 "average_speed": 4.907,
 "elevation_gain": 2.9,
 "source": "strava",
-"streak": 3
+"streak": 2
 },
 {
 "run_id": 20773011498,
@@ -7005,7 +7005,7 @@
 "average_speed": 4.762,
 "elevation_gain": 2.9,
 "source": "strava",
-"streak": 4
+"streak": 3
 },
 {
 "run_id": 20807243675,
@@ -7037,7 +7037,7 @@
 "average_speed": 0.277,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 1
+"streak": 2
 },
 {
 "run_id": 20824188600,
@@ -7053,7 +7053,7 @@
 "average_speed": 5.372,
 "elevation_gain": 62.0,
 "source": "strava",
-"streak": 2
+"streak": 3
 },
 {
 "run_id": 20829187774,
@@ -7085,7 +7085,7 @@
 "average_speed": 5.188,
 "elevation_gain": 66.0,
 "source": "strava",
-"streak": 4
+"streak": 1
 },
 {
 "run_id": 20867197593,
@@ -7101,7 +7101,7 @@
 "average_speed": 0.558,
 "elevation_gain": 0.0,
 "source": "strava",
-"streak": 5
+"streak": 1
 },
 {
 "run_id": 20864511336,
@@ -7117,7 +7117,7 @@
 "average_speed": 4.852,
 "elevation_gain": 2.9,
 "source": "strava",
-"streak": 5
+"streak": 1
 },
 {
 "run_id": 20864439968,
@@ -7133,7 +7133,7 @@
 "average_speed": 5.446,
 "elevation_gain": 65.0,
 "source": "strava",
-"streak": 5
+"streak": 2
 },
 {
 "run_id": 20877474737,
@@ -7149,6 +7149,6 @@
 "average_speed": 5.446,
 "elevation_gain": 65.0,
 "source": "strava",
-"streak": 6
+"streak": 3
 }
 ]
