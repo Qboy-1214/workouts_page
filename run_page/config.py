@@ -81,6 +81,8 @@ MAPPING_TYPE = [
     "Snowboard",
     "Ski",
     "BackcountrySki",
+    "Workout",
+    "Soccer",
 ]
 
 STRAVA_GARMIN_TYPE_DICT = {
