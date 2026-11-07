@@ -25,9 +25,7 @@ Base = declarative_base()
 # repo so CI runs don't re-query Nominatim for known points — nominatim
 # .openstreetmap.org blocks GitHub runner IPs, so uncached lookups there
 # mostly fail silently.
-GEOCODE_CACHE_FILE = os.path.join(
-    os.path.dirname(__file__), "..", "geocode_cache.json"
-)
+GEOCODE_CACHE_FILE = os.path.join(os.path.dirname(__file__), "..", "geocode_cache.json")
 
 
 def _load_geocode_cache():
