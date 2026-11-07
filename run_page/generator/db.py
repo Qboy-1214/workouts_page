@@ -1,4 +1,6 @@
 import datetime
+import json
+import os
 import random
 import string
 
@@ -18,6 +20,28 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 Base = declarative_base()
+
+# Reverse-geocode results keyed by "lat3,lng3" (~110m grid). Persisted in the
+# repo so CI runs don't re-query Nominatim for known points — nominatim
+# .openstreetmap.org blocks GitHub runner IPs, so uncached lookups there
+# mostly fail silently.
+GEOCODE_CACHE_FILE = os.path.join(os.path.dirname(__file__), "geocode_cache.json")
+
+
+def _load_geocode_cache():
+    try:
+        with open(GEOCODE_CACHE_FILE, encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _save_geocode_cache(cache):
+    try:
+        with open(GEOCODE_CACHE_FILE, "w", encoding="utf-8") as f:
+            json.dump(cache, f, ensure_ascii=False, indent=0)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # random user name 8 letters
@@ -126,18 +150,12 @@ def update_or_create_activity(session, run_activity):
         if not activity:
             location_country = getattr(run_activity, "location_country", "")
             start_point = run_activity.start_latlng
-            # or China for #176 to fix
-            if not location_country and start_point or location_country == "China":
-                try:
-                    location_country = str(
-                        g.reverse(
-                            f"{start_point.lat}, {start_point.lon}",
-                            language="zh-CN",  # type: ignore
-                            timeout=15,
-                        )
-                    )
-                # limit (only for the first time)
-                except Exception:  # noqa: BLE001
+            if not location_country and start_point:
+                cache_key = f"{start_point.lat:.3f},{start_point.lon:.3f}"
+                geocode_cache = _load_geocode_cache()
+                if cache_key in geocode_cache:
+                    location_country = geocode_cache[cache_key]
+                else:
                     try:
                         location_country = str(
                             g.reverse(
@@ -146,7 +164,9 @@ def update_or_create_activity(session, run_activity):
                                 timeout=15,
                             )
                         )
-                    except Exception:  # noqa: S110, BLE001
+                        geocode_cache[cache_key] = location_country
+                        _save_geocode_cache(geocode_cache)
+                    except Exception:  # noqa: BLE001
                         pass
 
             activity = Activity(
