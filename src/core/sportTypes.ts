@@ -27,3 +27,15 @@ export function sportLabel(type: string, locale?: string): string {
   if (!entry) return `🏅 ${type}`;
   return locale === 'zh' ? `${entry.emoji} ${entry.zh}` : `${entry.emoji} ${type}`;
 }
+
+// 室内运动（健身房训练、羽毛球、VR 网球、虚拟骑行等）——其余类型视为室外
+export const INDOOR_SPORTS = new Set([
+  'Workout',
+  'Badminton',
+  'VR Tennis',
+  'VirtualRide',
+]);
+
+export function isIndoorSport(type: string): boolean {
+  return INDOOR_SPORTS.has(type);
+}

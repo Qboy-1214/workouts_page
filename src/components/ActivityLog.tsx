@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import type { Activity, SportFilter } from '../types';
 import { formatDuration, formatPace } from '../hooks/useActivities';
-import { sportLabel } from '../core/sportTypes';
+import { sportLabel, isIndoorSport } from '../core/sportTypes';
 import { useLocale } from '../hooks/useLocale';
 
 interface ActivityLogProps {
@@ -29,9 +29,13 @@ export function ActivityLog({
   const { t, locale } = useLocale();
   const [page, setPage] = useState(0);
   const [distFilter, setDistFilter] = useState<DistanceFilter>('all');
+  const [placeTab, setPlaceTab] = useState<'outdoor' | 'indoor'>('outdoor');
 
   const sorted = useMemo(() => {
-    const filtered = activities.filter((a) => {
+    const byPlace = activities.filter((a) =>
+      placeTab === 'indoor' ? isIndoorSport(a.type) : !isIndoorSport(a.type)
+    );
+    const filtered = byPlace.filter((a) => {
       const km = a.distance / 1000;
       switch (distFilter) {
         case '10':
@@ -49,7 +53,7 @@ export function ActivityLog({
         new Date(b.start_date_local).getTime() -
         new Date(a.start_date_local).getTime()
     );
-  }, [activities, distFilter]);
+  }, [activities, distFilter, placeTab]);
   const selectedId = selectedActivity?.run_id;
   const [previousSelection, setPreviousSelection] = useState(selectedId);
   const [previousSorted, setPreviousSorted] = useState(sorted);
@@ -85,6 +89,38 @@ export function ActivityLog({
           {Math.min((page + 1) * PAGE_SIZE, sorted.length)} {t('of')}{' '}
           {sorted.length}
         </span>
+      </div>
+
+      {/* 室外 / 室内 tabs */}
+      <div
+        role="group"
+        aria-label={locale === 'zh' ? '运动场地' : 'Place'}
+        className="mb-3 flex flex-wrap items-center gap-2"
+      >
+        <button
+          aria-pressed={placeTab === 'outdoor'}
+          onClick={() => {
+            onSelectActivity?.(null);
+            setPlaceTab('outdoor');
+            setPage(0);
+          }}
+          className={`rounded-full px-3 py-1 text-xs font-medium ${placeTab === 'outdoor' ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]' : 'bg-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
+        >
+          🏃 {locale === 'zh' ? '室外' : 'Outdoor'} ({' '}
+          {activities.filter((a) => !isIndoorSport(a.type)).length})
+        </button>
+        <button
+          aria-pressed={placeTab === 'indoor'}
+          onClick={() => {
+            onSelectActivity?.(null);
+            setPlaceTab('indoor');
+            setPage(0);
+          }}
+          className={`rounded-full px-3 py-1 text-xs font-medium ${placeTab === 'indoor' ? 'bg-[var(--color-accent)] text-[var(--color-on-accent)]' : 'bg-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]'}`}
+        >
+          🏋️ {locale === 'zh' ? '室内' : 'Indoor'} ({' '}
+          {activities.filter((a) => isIndoorSport(a.type)).length})
+        </button>
       </div>
 
       {/* Year tabs */}
