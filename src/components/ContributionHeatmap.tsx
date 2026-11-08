@@ -64,7 +64,7 @@ function typeLabel(type: string, locale: string): string {
     Run: { zh: '跑步', en: 'Run' },
     Ride: { zh: '骑行', en: 'Ride' },
     Hike: { zh: '徒步', en: 'Hike' },
-    Training: { zh: '训练', en: 'Training' },
+    Training: { zh: '专项', en: 'Training' },
     WeightTraining: { zh: '力量训练', en: 'Weight Training' },
     Workout: { zh: '综合训练', en: 'Workout' },
     StairStepper: { zh: '楼梯机', en: 'Stair Stepper' },
