@@ -83,7 +83,17 @@ MAPPING_TYPE = [
     "BackcountrySki",
     "Workout",
     "Soccer",
+    "Badminton",
+    "VR Tennis",
 ]
+
+# Strava 把很多室内运动记成泛化的 "Workout"——按活动名称关键词细分类型。
+# 键为名称的小写子串，值为归类后的类型。
+WORKOUT_NAME_TYPES = {
+    "羽毛球": "Badminton",
+    "badminton": "Badminton",
+    "tennis": "VR Tennis",
+}
 
 STRAVA_GARMIN_TYPE_DICT = {
     "Hike": "hiking",

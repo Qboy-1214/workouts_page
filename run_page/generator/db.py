@@ -8,7 +8,7 @@ import urllib.request
 
 import polyline as mod_polyline
 
-from config import TYPE_DICT
+from config import TYPE_DICT, WORKOUT_NAME_TYPES
 from geopy.geocoders import Nominatim, options
 from sqlalchemy import (
     Column,
@@ -226,6 +226,15 @@ def update_or_create_activity(session, run_activity):
         source = "strava"
         if activity_type_value in TYPE_DICT:
             type = TYPE_DICT[activity_type_value]
+
+        # Strava records many indoor sports as a generic "Workout" —
+        # reclassify by activity name keywords (e.g. 羽毛球 → Badminton).
+        if type == "Workout":
+            name_lower = (run_activity.name or "").lower()
+            for keyword, mapped in WORKOUT_NAME_TYPES.items():
+                if keyword in name_lower:
+                    type = mapped
+                    break
 
         current_elevation_gain = 0.0  # default value
 

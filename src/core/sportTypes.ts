@@ -6,6 +6,8 @@ export const SPORT_TYPES: Record<string, { emoji: string; zh: string }> = {
   VirtualRide: { emoji: '🚴‍♂️', zh: '虚拟骑行' },
   Workout: { emoji: '🏋️', zh: '训练' },
   Soccer: { emoji: '⚽', zh: '足球' },
+  Badminton: { emoji: '🏸', zh: '羽毛球' },
+  'VR Tennis': { emoji: '🎾', zh: 'VR 网球' },
   Hike: { emoji: '🥾', zh: '徒步' },
   Rowing: { emoji: '🚣', zh: '划船' },
   Swim: { emoji: '🏊', zh: '游泳' },
