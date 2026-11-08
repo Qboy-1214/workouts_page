@@ -201,8 +201,20 @@ export function SummaryPage({
   const [sport, setSport] = useState('all');
   const [year, setYear] = useState('all');
   const [limit, setLimit] = useState(12);
-  const sports = useMemo(
-    () => [...new Set(activities.map((a) => a.type))].sort(),
+  const sportStats = useMemo(
+    () =>
+      Object.entries(
+        activities.reduce(
+          (acc, a) => {
+            const entry = acc[a.type] ?? { count: 0, km: 0 };
+            entry.count += 1;
+            entry.km += a.distance / 1000;
+            acc[a.type] = entry;
+            return acc;
+          },
+          {} as Record<string, { count: number; km: number }>
+        )
+      ).sort((x, y) => y[1].count - x[1].count),
     [activities]
   );
   const years = useMemo(
@@ -231,54 +243,93 @@ export function SummaryPage({
     ['day', zh ? '日' : 'Day'],
     ['life', 'Life'],
   ];
+  const sportStats = useMemo(
+    () =>
+      [...Object.entries(sportStatsRaw(activities))].sort(
+        (x, y) => y[1].count - x[1].count
+      ),
+    [activities]
+  );
+  const pillBase =
+    'rounded-full px-3 py-1.5 text-xs font-medium transition-colors';
+  const pillOff =
+    'bg-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]';
+  const pillOn = 'bg-[var(--color-accent)] text-[var(--color-on-accent)]';
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">{t('summary')}</h1>
-          <p className="mt-2 text-sm text-[var(--color-muted)]">
-            {zh
-              ? '按时间回看每一段运动历程。'
-              : 'Your activity history, one period at a time.'}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <label className="text-xs text-[var(--color-muted)]">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold">{t('summary')}</h1>
+        <p className="mt-2 text-sm text-[var(--color-muted)]">
+          {zh
+            ? '按时间回看每一段运动历程。'
+            : 'Your activity history, one period at a time.'}
+        </p>
+      </div>
+      <div className="mb-6 space-y-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 sm:p-5">
+        <div
+          role="group"
+          aria-label={zh ? '运动类型' : 'Sport'}
+          className="flex flex-wrap items-center gap-2"
+        >
+          <span className="mr-1 text-xs text-[var(--color-muted)]">
             {zh ? '运动类型' : 'Sport'}
-            <select
-              aria-label={zh ? '运动类型' : 'Sport'}
-              className={`${control} ml-2`}
-              value={sport}
-              onChange={(e) => {
-                setSport(e.target.value);
+          </span>
+          <button
+            aria-pressed={sport === 'all'}
+            onClick={() => {
+              setSport('all');
+              setLimit(12);
+            }}
+            className={`${pillBase} ${sport === 'all' ? pillOn : pillOff}`}
+          >
+            {zh ? '全部运动' : 'All sports'} ({activities.length})
+          </button>
+          {sportStats.map(([s, stat]) => (
+            <button
+              key={s}
+              aria-pressed={sport === s}
+              onClick={() => {
+                setSport(s);
                 setLimit(12);
               }}
+              className={`${pillBase} ${sport === s ? pillOn : pillOff}`}
             >
-              <option value="all">{zh ? '全部运动' : 'All sports'}</option>
-              {sports.map((s) => (
-                <option key={s} value={s}>
-                  {sportLabel(s, locale)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="text-xs text-[var(--color-muted)]">
+              {sportLabel(s, locale)} · {stat.count} 次 ·{' '}
+              {Math.round(stat.km)} km
+            </button>
+          ))}
+        </div>
+        <div
+          role="group"
+          aria-label={zh ? '年份' : 'Year'}
+          className="flex flex-wrap items-center gap-2"
+        >
+          <span className="mr-1 text-xs text-[var(--color-muted)]">
             {zh ? '年份' : 'Year'}
-            <select
-              aria-label={zh ? '汇总年份' : 'Summary year'}
-              className={`${control} ml-2`}
-              value={year}
-              onChange={(e) => {
-                setYear(e.target.value);
+          </span>
+          <button
+            aria-pressed={year === 'all'}
+            onClick={() => {
+              setYear('all');
+              setLimit(12);
+            }}
+            className={`${pillBase} ${year === 'all' ? pillOn : pillOff}`}
+          >
+            {zh ? '全部年份' : 'All years'}
+          </button>
+          {years.map((y) => (
+            <button
+              key={y}
+              aria-pressed={year === y}
+              onClick={() => {
+                setYear(y);
                 setLimit(12);
               }}
+              className={`${pillBase} ${year === y ? pillOn : pillOff}`}
             >
-              <option value="all">{zh ? '全部年份' : 'All years'}</option>
-              {years.map((y) => (
-                <option key={y}>{y}</option>
-              ))}
-            </select>
-          </label>
+              {y}
+            </button>
+          ))}
         </div>
       </div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
