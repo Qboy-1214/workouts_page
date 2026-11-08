@@ -132,6 +132,13 @@ export function RouteMapCanvas({
   const drawRoutes = useCallback(() => {
     const map = mapRef.current;
     if (!map || !styleReadyRef.current) return;
+    // maplibre 的样式表达式不支持 CSS var()——取 Radix 变量在当前主题下的实际色值
+    const css = getComputedStyle(document.documentElement);
+    const colorFor = (name: string, fallback: string) =>
+      css.getPropertyValue(name).trim() || fallback;
+    const runColor = colorFor('--orange-9', '#f76b15');
+    const rideColor = colorFor('--blue-9', '#0090ff');
+    const otherColor = colorFor('--cyan-9', '#4dd2ff');
     const data = { type: 'FeatureCollection' as const, features: routes };
     const source = map.getSource('routes') as
       maplibregl.GeoJSONSource | undefined;
@@ -148,10 +155,10 @@ export function RouteMapCanvas({
             'match',
             ['get', 'type'],
             'Run',
-            'var(--orange-9)',
+            runColor,
             'Ride',
-            'var(--blue-9)',
-            'var(--cyan-9)',
+            rideColor,
+            otherColor,
           ],
         },
       });
