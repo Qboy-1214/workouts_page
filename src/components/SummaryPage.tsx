@@ -9,6 +9,7 @@ import {
   YAxis,
 } from 'recharts';
 import type { Activity } from '../types';
+import { sportLabel } from '../core/sportTypes';
 import { useLocale } from '../hooks/useLocale';
 import { formatPace } from '../hooks/useActivities';
 import {
@@ -256,7 +257,7 @@ export function SummaryPage({
               <option value="all">{zh ? '全部运动' : 'All sports'}</option>
               {sports.map((s) => (
                 <option key={s} value={s}>
-                  {s}
+                  {sportLabel(s, locale)}
                 </option>
               ))}
             </select>
