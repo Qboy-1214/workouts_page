@@ -158,7 +158,8 @@ export function RouteMapCanvas({
     const map = new maplibregl.Map({
       container: containerRef.current,
       style: { version: 8, sources: {}, layers: [] },
-      center: [121.4, 31.2],
+      // 初始相机对准活动数据所在地（成都），避免先加载无关区域的瓦片
+      center: [104.05, 30.55],
       zoom: 10,
       // 中文/日文等表意文字用本地字体渲染，避免依赖远程字体服务
       localIdeographFontFamily: 'sans-serif',
@@ -193,13 +194,15 @@ export function RouteMapCanvas({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    let failed = false;
+    // OpenFreeMap 在部分网络下较慢（单请求 1~3s）且并发突发会被重置连接，
+    // 因此不在单条资源错误上判定失败（maplibre 会自行重试瓦片），
+    // 只在长时间仍未完成样式加载时给出提示；轨迹绘制由 style.load 驱动，
+    // 底图无论快慢最终都能绘制。
     const onError = () => {
-      failed = true;
-      setStatus('error');
+      // 资源级错误（个别瓦片/字体被重置）由 maplibre 自行重试，不判定整体失败
     };
     const onIdle = () => {
-      if (!failed) setStatus('ready');
+      setStatus('ready');
     };
     map.on('error', onError);
     map.on('idle', onIdle);
@@ -208,7 +211,7 @@ export function RouteMapCanvas({
     map.setStyle(style);
     const timer = window.setTimeout(() => {
       if (!map.isStyleLoaded()) setStatus('error');
-    }, 15000);
+    }, 60000);
     return () => {
       window.clearTimeout(timer);
       map.off('error', onError);
