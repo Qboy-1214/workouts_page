@@ -99,7 +99,18 @@ export function RouteMapCanvas({
 
   const routeBounds = useMemo(() => {
     const bounds = new maplibregl.LngLatBounds();
+    if (!routes.length) return bounds;
+    // 以起点纬度中位数为基准，剔除离群轨迹（如一场境外比赛），
+    // 避免初始视野被拉到世界级导致本土轨迹缩成不可见的点。
+    // 离群轨迹仍正常绘制，手动缩放即可查看。
+    const starts = routes
+      .map((r) => r.geometry.coordinates[0])
+      .filter((c) => c && Number.isFinite(c[0]) && Number.isFinite(c[1]));
+    const lats = starts.map((c) => c[1]).sort((a, b) => a - b);
+    const midLat = lats[Math.floor(lats.length / 2)] ?? 0;
     for (const route of routes) {
+      const first = route.geometry.coordinates[0];
+      if (!first || Math.abs(first[1] - midLat) > 20) continue;
       for (const coord of route.geometry.coordinates)
         bounds.extend(coord as [number, number]);
     }
