@@ -167,6 +167,8 @@ export function RouteMapCanvas({
       ...cameraRef.current,
     });
     mapRef.current = map;
+    // 调试钩子：用于在控制台检查地图内部状态
+    (window as unknown as Record<string, unknown>).__routeMap = map;
     map.addControl(new maplibregl.NavigationControl(), 'top-right');
     map.addControl(
       new maplibregl.FullscreenControl({ container: panelRef.current }),
