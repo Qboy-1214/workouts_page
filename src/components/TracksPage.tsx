@@ -3,6 +3,7 @@ import { exportCard } from '../utils/exportCard';
 import { RouteMap } from './RouteMap';
 import * as polyline from '@mapbox/polyline';
 import type { Activity } from '../types';
+import { sportLabel } from '../core/sportTypes';
 import {
   getAvailableYears,
   formatDistance,
@@ -101,11 +102,21 @@ const TrackThumb = memo(function TrackThumb({
 });
 
 function getColor(a: Activity): string {
+  // Radix 色阶在当前主题下的实际色值（轨迹线颜色会进入 maplibre 图层，不能用 var()）
+  const css = getComputedStyle(document.documentElement);
+  const c = (name: string, fallback: string) =>
+    css.getPropertyValue(name).trim() || fallback;
   if (a.type === 'Run') {
     const km = a.distance / 1000;
-    return km >= 20 ? '#ef4444' : '#f97316';
+    return km >= 20 ? c('--red-9', '#ef4444') : c('--orange-9', '#f97316');
   }
-  return '#4dd2ff';
+  const byType: Record<string, string> = {
+    Ride: c('--blue-9', '#4dd2ff'),
+    Hike: c('--grass-9', '#4ade80'),
+    Soccer: c('--pink-9', '#ec4899'),
+    Swim: c('--sky-9', '#4ccce6'),
+  };
+  return byType[a.type] ?? c('--cyan-9', '#4dd2ff');
 }
 
 export function TracksPage({
@@ -162,6 +173,38 @@ export function TracksPage({
       base.filter((a) => a.summary_polyline && a.summary_polyline.length > 20),
     [base]
   );
+
+  // 图例：按轨迹墙里实际出现的运动类型动态生成（颜色与轨迹线一致）
+  const legendEntries = useMemo(() => {
+    const byType = new Map<string, Activity[]>();
+    for (const a of withPolyline) {
+      const arr = byType.get(a.type) ?? [];
+      arr.push(a);
+      byType.set(a.type, arr);
+    }
+    const entries: { color: string; label: string }[] = [];
+    for (const [type, arr] of [...byType.entries()].sort(
+      (x, y) => y[1].length - x[1].length
+    )) {
+      if (type === 'Run') {
+        const has20 = arr.some((a) => a.distance / 1000 >= 20);
+        const hasUnder = arr.some((a) => a.distance / 1000 < 20);
+        if (hasUnder)
+          entries.push({
+            color: getColor(arr.find((a) => a.distance / 1000 < 20)!),
+            label: locale === 'zh' ? '跑步' : 'Run',
+          });
+        if (has20)
+          entries.push({
+            color: getColor(arr.find((a) => a.distance / 1000 >= 20)!),
+            label: locale === 'zh' ? '跑步 ≥20km' : 'Run ≥20km',
+          });
+      } else {
+        entries.push({ color: getColor(arr[0]), label: sportLabel(type, locale) });
+      }
+    }
+    return entries;
+  }, [withPolyline, locale]);
 
   const { totalDist, totalTime, avgPace } = useMemo(() => {
     let totalDist = 0,
@@ -681,26 +724,23 @@ export function TracksPage({
             {/* Legend + sort */}
             {!clustering && clusteredTracks.length > 0 && (
               <div className="mt-4 flex flex-wrap items-center gap-4 border-t-[0.5px] border-[var(--color-border)] pt-3 text-xs text-[var(--color-muted)]">
-                {sportFilter === null || sportFilter === 'Run' ? (
-                  <>
-                    <span className="flex items-center gap-1.5">
-                      <span className="inline-block h-0.5 w-3 rounded bg-[#f97316]" />
-                      {locale === 'zh' ? '跑步' : 'Run'}
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <span className="inline-block h-0.5 w-3 rounded bg-[#ef4444]" />
-                      {locale === 'zh' ? '跑步 ≥20km' : 'Run ≥20km'}
-                    </span>
-                  </>
-                ) : null}
-                {null}
-                {null}
+                {legendEntries.map(({ color, label }) => (
+                  <span
+                    key={label}
+                    className="flex items-center gap-1.5"
+                  >
+                    <span
+                      className="inline-block h-0.5 w-3 rounded"
+                      style={{ backgroundColor: color }}
+                    />
+                    {label}
+                  </span>
+                ))}
                 <div className="ml-auto flex items-center gap-1">
                   <span>
                     {clusteredTracks.length}{' '}
                     {locale === 'zh' ? '条路线' : 'routes'}
                   </span>
-                  <span className="mx-1.5 text-[var(--color-border)]">·</span>
                   <button
                     aria-pressed={sortBy === 'date'}
                     onClick={() => setSortBy('date')}
