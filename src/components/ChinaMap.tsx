@@ -113,18 +113,18 @@ export const ChinaMap = memo(function ChinaMap({
     <div
       role="region"
       aria-label={locale === 'zh' ? '足迹地图' : 'Footprint map'}
-      className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5"
+      className="rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-5"
     >
       {/* Header */}
       <div className="mb-3 flex items-center justify-between">
-        <h2 className="text-base font-semibold">
+        <h2 className="text-sm font-semibold">
           {locale === 'zh' ? '足迹地图' : 'Footprint Map'}
         </h2>
         <div className="flex items-center gap-2 text-xs text-[var(--color-muted)]">
           {selectedProvince ? (
             <button
               onClick={() => onSelectProvince?.(null)}
-              className="flex items-center gap-1 text-[var(--color-accent)] transition-opacity hover:opacity-70"
+              className="flex items-center gap-1 text-[var(--color-accent)] hover:opacity-70"
             >
               <svg
                 className="h-3 w-3"
@@ -202,12 +202,12 @@ export const ChinaMap = memo(function ChinaMap({
                 fill={fill}
                 stroke="var(--color-bg)"
                 strokeWidth="0.5"
-                className={`transition-all duration-150 ${visited ? 'cursor-pointer focus:outline-2 focus:outline-[var(--color-accent)]' : 'cursor-default'}`}
+                className={`${visited ? 'cursor-pointer focus:outline-2 focus:outline-[var(--color-accent)]' : 'cursor-default'}`}
                 onMouseEnter={() => setHoveredProvince(name)}
                 onMouseLeave={() => setHoveredProvince(null)}
                 role={visited && onSelectProvince ? 'button' : undefined}
                 tabIndex={visited && onSelectProvince ? 0 : undefined}
-                aria-label={`${name} · ${count} ${locale === 'zh' ? '次活动' : 'activities'}`}
+                aria-label={`${name} ${count} ${locale === 'zh' ? '次活动' : 'activities'}`}
                 aria-pressed={
                   visited && onSelectProvince ? isSelected : undefined
                 }

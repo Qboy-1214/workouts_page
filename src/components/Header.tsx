@@ -21,7 +21,7 @@ export function Header({ dark, toggleTheme, page, onNavigate }: HeaderProps) {
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--color-border)] bg-[var(--color-bg)]/70 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b-[0.5px] border-[var(--color-border)] bg-[var(--color-bg)]/70 backdrop-blur-md">
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
         {/* Logo → home */}
         <button
@@ -42,7 +42,7 @@ export function Header({ dark, toggleTheme, page, onNavigate }: HeaderProps) {
               type="button"
               key={item.page}
               onClick={() => onNavigate(item.page)}
-              className={`cursor-pointer border-0 bg-transparent p-0 text-sm transition-colors ${
+              className={`cursor-pointer border-0 bg-transparent p-0 text-sm ${
                 item.page === page
                   ? 'font-medium text-[var(--color-accent)]'
                   : 'text-[var(--color-muted)] hover:text-[var(--color-text)]'
@@ -71,7 +71,7 @@ export function Header({ dark, toggleTheme, page, onNavigate }: HeaderProps) {
                   : 'Switch to dark mode'
             }
             onClick={toggleTheme}
-            className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-card)]"
+            className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-[var(--color-card)]"
           >
             {dark ? (
               <svg
@@ -105,7 +105,7 @@ export function Header({ dark, toggleTheme, page, onNavigate }: HeaderProps) {
           </button>
           <button
             onClick={() => setLocale(locale === 'zh' ? 'en' : 'zh')}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-[var(--color-muted)] transition-colors hover:bg-[var(--color-card)] hover:text-[var(--color-text)]"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold text-[var(--color-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text)]"
             title={locale === 'zh' ? 'Switch to English' : '切换中文'}
           >
             {locale === 'zh' ? 'EN' : '中'}
@@ -114,7 +114,7 @@ export function Header({ dark, toggleTheme, page, onNavigate }: HeaderProps) {
             href="https://github.com/yihong0618/running_page"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-muted)] transition-colors hover:bg-[var(--color-card)] hover:text-[var(--color-text)]"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[var(--color-muted)] hover:bg-[var(--color-card)] hover:text-[var(--color-text)]"
             title="GitHub"
           >
             <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">

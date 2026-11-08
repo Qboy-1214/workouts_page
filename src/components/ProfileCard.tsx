@@ -87,7 +87,7 @@ export const ProfileCard = memo(function ProfileCard({
   };
 
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5 hover:shadow-[var(--color-accent)]/5 hover:shadow-lg">
+    <div className="rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5">
       {/* Avatar top-left + Distance */}
       <div className="flex items-center gap-4">
         <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full border-2 border-[var(--color-border)]">
@@ -116,9 +116,9 @@ export const ProfileCard = memo(function ProfileCard({
           )}
         </div>
         <div className="flex-1 text-center">
-          <p className="font-mono text-3xl font-bold">
+          <p className="font-mono text-[28px] font-bold">
             {formatDistance(totalDistance)}
-            <span className="ml-1 text-base font-normal text-[var(--color-muted)]">
+            <span className="ml-1 text-sm font-normal text-[var(--color-muted)]">
               km
             </span>
           </p>
@@ -161,7 +161,7 @@ export const ProfileCard = memo(function ProfileCard({
       </div>
 
       {/* Stats row - Strava style */}
-      <div className="mt-4 grid grid-cols-3 gap-2 border-t border-[var(--color-border)] pt-4 text-center">
+      <div className="mt-4 grid grid-cols-3 gap-2 border-t-[0.5px] border-[var(--color-border)] pt-4 text-center">
         <div>
           <p className="flex items-center justify-center gap-1 text-xs text-[var(--color-muted)]">
             <svg
@@ -179,7 +179,7 @@ export const ProfileCard = memo(function ProfileCard({
             </svg>
             {t('activities')}
           </p>
-          <p className="text-lg font-bold">{totalCount.toLocaleString()}</p>
+          <p className="text-xl font-bold">{totalCount.toLocaleString()}</p>
         </div>
         <div className="border-x border-[var(--color-border)]">
           <p className="flex items-center justify-center gap-1 text-xs text-[var(--color-muted)]">
@@ -198,7 +198,7 @@ export const ProfileCard = memo(function ProfileCard({
             </svg>
             {t('years')}
           </p>
-          <p className="text-lg font-bold">{yearsActive}</p>
+          <p className="text-xl font-bold">{yearsActive}</p>
         </div>
         <div>
           <p className="flex items-center justify-center gap-1 text-xs text-[var(--color-muted)]">
@@ -217,13 +217,13 @@ export const ProfileCard = memo(function ProfileCard({
             </svg>
             {locale === 'zh' ? '时间' : 'Time'}
           </p>
-          <p className="text-lg font-bold">{formatHours(totalSeconds)}</p>
+          <p className="text-xl font-bold">{formatHours(totalSeconds)}</p>
         </div>
       </div>
 
       {/* Latest Activity */}
       {latest && (
-        <div className="mt-4 border-t border-[var(--color-border)] pt-4">
+        <div className="mt-4 border-t-[0.5px] border-[var(--color-border)] pt-4">
           <p className="mb-1 text-xs text-[var(--color-muted)]">
             {locale === 'zh' ? '最近活动' : 'Latest Activity'}
           </p>
@@ -232,7 +232,7 @@ export const ProfileCard = memo(function ProfileCard({
             {latest.name || (latest.type === 'Run' ? 'Run' : 'Ride')}
             <span className="font-normal text-[var(--color-muted)]">
               {' '}
-              · {formatDistance(latest.distance)} km ·{' '}
+              {formatDistance(latest.distance)} km ·{' '}
               {formatDate(latest.start_date_local)}
             </span>
           </p>

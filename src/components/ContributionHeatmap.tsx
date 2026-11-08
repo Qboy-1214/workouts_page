@@ -30,10 +30,10 @@ function toDisplayType(type: string): 'Run' | 'Ride' | 'Hike' | 'Training' {
 }
 
 const TYPE_PALETTES: Record<string, string[]> = {
-  Run: ['#fed7aa', '#fb923c', '#f97316', '#ea580c'],
-  Ride: ['#bfdbfe', '#60a5fa', '#3b82f6', '#2563eb'],
-  Hike: ['#bbf7d0', '#4ade80', '#22c55e', '#16a34a'],
-  Training: ['#fce7f3', '#f9a8d4', '#ec4899', '#db2777'],
+  Run: ['var(--orange-4)', 'var(--orange-6)', 'var(--orange-9)', 'var(--orange-10)'],
+  Ride: ['var(--blue-4)', 'var(--blue-6)', 'var(--blue-9)', 'var(--blue-10)'],
+  Hike: ['var(--grass-4)', 'var(--grass-6)', 'var(--grass-9)', 'var(--grass-10)'],
+  Training: ['var(--pink-4)', 'var(--pink-6)', 'var(--pink-9)', 'var(--pink-10)'],
 };
 
 // Color for single-filter modes (intensity by global max)
@@ -41,11 +41,11 @@ function getColor(distance: number, max: number, filter: SportFilter): string {
   if (distance === 0) return 'var(--color-border)';
   const level = Math.ceil(Math.min(distance / max, 1) * 4);
   const colors: Record<string, string[]> = {
-    all: ['#eef2bd', '#dce68a', '#b7c64b', '#879629'],
+    all: ['var(--lime-4)', 'var(--lime-6)', 'var(--lime-9)', 'var(--lime-10)'],
     Run: TYPE_PALETTES.Run,
     Ride: TYPE_PALETTES.Ride,
     Hike: TYPE_PALETTES.Hike,
-    Gym: ['#cffafe', '#67e8f9', '#0891b2', '#155e75'],
+    Gym: ['var(--cyan-4)', 'var(--cyan-6)', 'var(--cyan-9)', 'var(--cyan-10)'],
   };
   const palette = colors[filter] ?? colors.all;
   return palette[level - 1] ?? palette[0];
@@ -287,10 +287,10 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
   }, [activities, selectedYear, isGym]);
 
   const gymTypeColors: Record<string, string> = {
-    WeightTraining: '#f97316',
-    Workout: '#0e7490',
-    StairStepper: '#3b82f6',
-    WaterSport: '#06b6d4',
+    WeightTraining: 'var(--orange-9)',
+    Workout: 'var(--cyan-9)',
+    StairStepper: 'var(--blue-9)',
+    WaterSport: 'var(--sky-9)',
   };
 
   const heatmapTitle =
@@ -352,7 +352,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
       ref={captureRef}
       role="region"
       aria-label={heatmapTitle}
-      className="heatmap-card overflow-x-auto rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5"
+      className="heatmap-card overflow-x-auto rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-5"
     >
       <style>{`
         @keyframes fadeSlideIn {
@@ -381,7 +381,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
 
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">{heatmapTitle}</h2>
+        <h2 className="text-xl font-semibold">{heatmapTitle}</h2>
         <div className="flex flex-wrap items-center gap-1.5">
           {/* ALL button */}
           <button
@@ -405,7 +405,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
             }
             onClick={() => shiftWindow(-1)}
             disabled={!canScrollLeft}
-            className="flex h-5 w-5 items-center justify-center rounded text-[var(--color-muted)] transition-all hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-20"
+            className="flex h-5 w-5 items-center justify-center rounded text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-20"
           >
             <svg
               className="h-3 w-3"
@@ -445,7 +445,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
             }
             onClick={() => shiftWindow(1)}
             disabled={!canScrollRight}
-            className="flex h-5 w-5 items-center justify-center rounded text-[var(--color-muted)] transition-all hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-20"
+            className="flex h-5 w-5 items-center justify-center rounded text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:cursor-not-allowed disabled:opacity-20"
           >
             <svg
               className="h-3 w-3"
@@ -469,7 +469,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
             onClick={handleExport}
             disabled={exporting}
             data-export-hidden
-            className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-muted)] transition-all hover:text-[var(--color-text)] disabled:opacity-50"
+            className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-50"
             title={locale === 'zh' ? '导出图片' : 'Export as image'}
           >
             {exporting ? (
@@ -532,7 +532,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
                 </span>
                 <span className="text-xs text-[var(--color-muted)]">
                   {stats.count} {locale === 'zh' ? '次' : 'sessions'}
-                  {!isGym && ` · ${formatDistance(stats.distance)} km`}
+                  {!isGym && ` ${formatDistance(stats.distance)} km`}
                 </span>
               </div>
             )}
@@ -609,7 +609,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
                         disabled={!day.activities.length}
                         aria-label={titleText}
                         key={day.date}
-                        className="heatmap-day h-3 w-3 shrink-0 rounded-sm transition-colors hover:ring-1 hover:ring-[var(--color-muted)]"
+                        className="heatmap-day h-3 w-3 shrink-0 rounded-sm hover:ring-1 hover:ring-[var(--color-muted)]"
                         style={{ backgroundColor: bgColor }}
                         title={titleText}
                         onClick={() => {
@@ -648,7 +648,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
       {dayActivities.length > 0 && (
         <div
           data-export-hidden
-          className="mt-3 flex flex-wrap items-center gap-2 border-t border-[var(--color-border)] pt-3"
+          className="mt-3 flex flex-wrap items-center gap-2 border-t-[0.5px] border-[var(--color-border)] pt-3"
         >
           <span className="text-xs text-[var(--color-muted)]">
             {dayActivities[0].start_date_local.slice(0, 10)}
@@ -656,10 +656,10 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
           {dayActivities.map((activity) => (
             <button
               key={activity.run_id}
-              className="rounded-md border border-[var(--color-border)] px-2 text-xs hover:bg-[var(--color-bg)]"
+              className="rounded-md border-[0.5px] border-[var(--color-border)] px-2 text-xs hover:bg-[var(--color-bg)]"
               onClick={() => onSelectActivity?.(activity)}
             >
-              {activity.start_date_local.slice(11, 16)} · {activity.name} ·{' '}
+              {activity.start_date_local.slice(11, 16)} {activity.name} ·{' '}
               {(activity.distance / 1000).toFixed(1)} km
             </button>
           ))}
@@ -722,7 +722,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
       {/* Stats row */}
       {selectedYear === 'all'
         ? allStats && (
-            <div className="mt-4 flex items-center justify-end gap-4 border-t border-[var(--color-border)] pt-4 text-sm text-[var(--color-muted)]">
+            <div className="mt-4 flex items-center justify-end gap-4 border-t-[0.5px] border-[var(--color-border)] pt-4 text-sm text-[var(--color-muted)]">
               <span className="mr-auto text-xs text-[var(--color-muted)]">
                 {locale === 'zh' ? '全部年份汇总' : 'All-time total'}
               </span>
@@ -779,7 +779,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
             </div>
           )
         : yearData[0] && (
-            <div className="mt-4 flex items-center justify-end gap-4 border-t border-[var(--color-border)] pt-4 text-sm text-[var(--color-muted)]">
+            <div className="mt-4 flex items-center justify-end gap-4 border-t-[0.5px] border-[var(--color-border)] pt-4 text-sm text-[var(--color-muted)]">
               <span className="flex items-center gap-1 font-mono">
                 <svg
                   className="h-3.5 w-3.5"
@@ -853,7 +853,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
 
       {/* Gym: monthly frequency bars */}
       {isGym && gymMonthlyData.length > 0 && (
-        <div className="mt-4 border-t border-[var(--color-border)] pt-4">
+        <div className="mt-4 border-t-[0.5px] border-[var(--color-border)] pt-4">
           <p className="mb-3 text-xs text-[var(--color-muted)]">
             {locale === 'zh' ? '月度频次' : 'Monthly Frequency'}
           </p>
@@ -901,7 +901,7 @@ export const ContributionHeatmap = memo(function ContributionHeatmap({
                               />
                             );
                           })}
-                        <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] whitespace-nowrap text-[var(--color-accent)] opacity-0 transition-opacity group-hover:opacity-100">
+                        <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] whitespace-nowrap text-[var(--color-accent)] opacity-0 group-hover:opacity-100">
                           {m.total}
                         </span>
                       </div>

@@ -30,7 +30,7 @@ export function RouteMap(props: RouteMapProps) {
   }, []);
   const placeholder = (
     <div
-      className="flex h-[442px] items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] text-sm text-[var(--color-muted)]"
+      className="flex h-[442px] items-center justify-center rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] text-sm text-[var(--color-muted)]"
       role="status"
     >
       {locale === 'zh' ? '正在加载地图…' : 'Loading map…'}

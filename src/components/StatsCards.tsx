@@ -325,7 +325,7 @@ export const StatsCards = memo(function StatsCards({
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-[1fr_1fr_1fr_1.6fr]">
       {/* Yearly Goal */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5 hover:shadow-[var(--color-accent)]/5 hover:shadow-lg">
+      <div className="rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5">
         <p className="mb-2 flex items-center gap-1.5 text-xs tracking-wider text-[var(--color-muted)] uppercase">
           <svg
             className="h-3.5 w-3.5"
@@ -342,11 +342,11 @@ export const StatsCards = memo(function StatsCards({
           </svg>
           {t('yearlyGoal')}
         </p>
-        <p className="font-mono text-3xl font-bold whitespace-nowrap">
+        <p className="font-mono text-[28px] font-bold whitespace-nowrap">
           {goal.unit === 'time'
             ? formatHours(yearSeconds)
             : formatDistance(yearDistance)}
-          <span className="ml-1 text-base font-normal text-[var(--color-muted)]">
+          <span className="ml-1 text-sm font-normal text-[var(--color-muted)]">
             /{' '}
             {goal.unit === 'time'
               ? `${Math.round(yearGoalMins / 60)}h`
@@ -355,7 +355,7 @@ export const StatsCards = memo(function StatsCards({
         </p>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-border)]">
           <div
-            className="h-full rounded-full bg-[var(--color-accent)] transition-all"
+            className="h-full rounded-full bg-[var(--color-accent)]"
             style={{
               width: `${Math.min(goal.unit === 'time' ? (yearSeconds / (yearGoalMins * 60)) * 100 : (yearDistance / yearGoalMeters) * 100, 100)}%`,
             }}
@@ -392,7 +392,7 @@ export const StatsCards = memo(function StatsCards({
       </div>
 
       {/* Monthly Goal */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5 hover:shadow-[var(--color-accent)]/5 hover:shadow-lg">
+      <div className="rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5">
         <p className="mb-2 flex items-center gap-1.5 text-xs tracking-wider text-[var(--color-muted)] uppercase">
           <svg
             className="h-3.5 w-3.5"
@@ -409,11 +409,11 @@ export const StatsCards = memo(function StatsCards({
           </svg>
           {t('monthlyGoal')}
         </p>
-        <p className="font-mono text-3xl font-bold whitespace-nowrap">
+        <p className="font-mono text-[28px] font-bold whitespace-nowrap">
           {goal.unit === 'time'
             ? formatHours(monthSeconds)
             : formatDistance(monthDistance)}
-          <span className="ml-1 text-base font-normal text-[var(--color-muted)]">
+          <span className="ml-1 text-sm font-normal text-[var(--color-muted)]">
             /{' '}
             {goal.unit === 'time'
               ? `${Math.round(monthGoalMins / 60)}h`
@@ -422,7 +422,7 @@ export const StatsCards = memo(function StatsCards({
         </p>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-border)]">
           <div
-            className="h-full rounded-full bg-[var(--color-accent)] transition-all"
+            className="h-full rounded-full bg-[var(--color-accent)]"
             style={{
               width: `${Math.min(goal.unit === 'time' ? (monthSeconds / (monthGoalMins * 60)) * 100 : (monthDistance / monthGoalMeters) * 100, 100)}%`,
             }}
@@ -459,7 +459,7 @@ export const StatsCards = memo(function StatsCards({
       </div>
 
       {/* Weekly Goal */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5 hover:shadow-[var(--color-accent)]/5 hover:shadow-lg">
+      <div className="rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5">
         <p className="mb-2 flex items-center gap-1.5 text-xs tracking-wider text-[var(--color-muted)] uppercase">
           <svg
             className="h-3.5 w-3.5"
@@ -476,17 +476,17 @@ export const StatsCards = memo(function StatsCards({
           </svg>
           {locale === 'zh' ? '周目标' : 'WEEKLY GOAL'}
         </p>
-        <p className="font-mono text-3xl font-bold whitespace-nowrap">
+        <p className="font-mono text-[28px] font-bold whitespace-nowrap">
           {goal.unit === 'time'
             ? formatHours(weekSeconds)
             : formatDistance(weekDistance)}
-          <span className="ml-1 text-base font-normal text-[var(--color-muted)]">
+          <span className="ml-1 text-sm font-normal text-[var(--color-muted)]">
             / {goal.unit === 'time' ? `${weekGoalMins}m` : `${goal.weekly} km`}
           </span>
         </p>
         <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--color-border)]">
           <div
-            className="h-full rounded-full bg-[var(--color-accent)] transition-all"
+            className="h-full rounded-full bg-[var(--color-accent)]"
             style={{
               width: `${Math.min(goal.unit === 'time' ? (weekSeconds / (weekGoalMins * 60)) * 100 : (weekDistance / weekGoalMeters) * 100, 100)}%`,
             }}
@@ -523,7 +523,7 @@ export const StatsCards = memo(function StatsCards({
       </div>
 
       {/* Streak */}
-      <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5 hover:shadow-[var(--color-accent)]/5 hover:shadow-lg">
+      <div className="rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-5 hover:border-[var(--color-accent)]/30 hover:bg-[var(--color-accent)]/5">
         <p className="mb-2 flex items-center gap-1.5 text-xs tracking-wider text-[var(--color-muted)] uppercase">
           <svg
             className="h-3.5 w-3.5"
@@ -546,9 +546,9 @@ export const StatsCards = memo(function StatsCards({
           {t('streak')}
         </p>
         <div className="flex items-baseline gap-3">
-          <p className="font-mono text-3xl font-bold">
+          <p className="font-mono text-[28px] font-bold">
             {currentStreak}
-            <span className="ml-1 text-base font-normal text-[var(--color-muted)]">
+            <span className="ml-1 text-sm font-normal text-[var(--color-muted)]">
               {t('days')}
             </span>
           </p>
@@ -586,7 +586,7 @@ export const StatsCards = memo(function StatsCards({
                   tabIndex={wd.hasActivity ? 0 : undefined}
                   aria-label={
                     wd.hasActivity
-                      ? `${wd.key} · ${wd.acts.length} ${t('calendarActivities')}`
+                      ? `${wd.key} ${wd.acts.length} ${t('calendarActivities')}`
                       : undefined
                   }
                   onKeyDown={(event) => {
@@ -607,7 +607,7 @@ export const StatsCards = memo(function StatsCards({
                     {weekLabels[i]}
                   </span>
                   <div
-                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium transition-opacity ${
+                    className={`flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-medium ${
                       wd.hasActivity
                         ? 'text-white hover:opacity-70'
                         : wd.isToday

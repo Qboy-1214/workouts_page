@@ -79,11 +79,11 @@ export function ActivityLog({
     <div
       aria-label={t('activityLog')}
       role="region"
-      className="activity-log-card rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 sm:p-6"
+      className="activity-log-card rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-4 sm:p-6"
     >
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold">{t('activityLog')}</h2>
+        <h2 className="text-xl font-bold">{t('activityLog')}</h2>
         <span className="text-sm text-[var(--color-muted)]">
           {t('showing')} {sorted.length ? page * PAGE_SIZE + 1 : 0}-
           {Math.min((page + 1) * PAGE_SIZE, sorted.length)} {t('of')}{' '}
@@ -194,7 +194,7 @@ export function ActivityLog({
       <div className="overflow-x-auto">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
-            <tr className="border-b border-[var(--color-border)] text-left text-[var(--color-muted)]">
+            <tr className="border-b-[0.5px] border-[var(--color-border)] text-left text-[var(--color-muted)]">
               <th className="pb-3 font-medium">{t('date')}</th>
               <th className="pb-3 font-medium">{t('type')}</th>
               <th className="pb-3 font-medium">{t('name')}</th>
@@ -235,9 +235,9 @@ export function ActivityLog({
                     selectedActivity?.run_id === a.run_id ? null : a
                   )
                 }
-                className={`cursor-pointer border-b border-[var(--color-border)]/30 transition-colors ${
+                className={`cursor-pointer border-b-[0.5px] border-[var(--color-border)]/30 ${
                   selectedActivity?.run_id === a.run_id
-                    ? 'border-l-2 border-l-[var(--color-accent)] bg-[var(--color-accent)]/10'
+                    ? 'bg-[var(--color-accent)]/10'
                     : 'hover:bg-[var(--color-bg)]'
                 }`}
               >
@@ -272,14 +272,14 @@ export function ActivityLog({
       </div>
 
       {/* Pagination */}
-      <div className="mt-4 flex items-center justify-between border-t border-[var(--color-border)] pt-4">
+      <div className="mt-4 flex items-center justify-between border-t-[0.5px] border-[var(--color-border)] pt-4">
         <button
           aria-label={
             locale === 'zh' ? '上一页活动' : 'Previous activities page'
           }
           onClick={() => setPage((p) => Math.max(0, p - 1))}
           disabled={page === 0}
-          className="text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)] disabled:opacity-30"
+          className="text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-30"
         >
           ←
         </button>
@@ -291,7 +291,7 @@ export function ActivityLog({
           aria-label={locale === 'zh' ? '下一页活动' : 'Next activities page'}
           onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
           disabled={page >= totalPages - 1}
-          className="text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)] disabled:opacity-30"
+          className="text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-30"
         >
           →
         </button>

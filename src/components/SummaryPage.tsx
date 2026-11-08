@@ -21,9 +21,9 @@ import {
 } from '../utils/summary';
 
 const control =
-  'rounded-lg border border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-text)]';
+  'rounded-lg border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] px-3 py-2 text-sm text-[var(--color-text)]';
 const panel =
-  'rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-5 sm:p-6';
+  'rounded-2xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-5 sm:p-6';
 const number = (value: number) =>
   value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 
@@ -93,14 +93,14 @@ function SummaryCard({
   return (
     <article className={panel}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h2 className="text-lg font-semibold">
+        <h2 className="text-xl font-semibold">
           {label === 'Life'
             ? zh
-              ? '全部历程 · Life'
-              : 'All time · Life'
+              ? '全部历程 Life'
+              : 'All time Life'
             : label}
         </h2>
-        <p className="text-2xl font-semibold text-[var(--color-accent)] tabular-nums">
+        <p className="text-[28px] font-semibold text-[var(--color-accent)] tabular-nums">
           {number(stats.distance / 1000)}{' '}
           <span className="text-sm font-normal text-[var(--color-muted)]">
             km
@@ -163,11 +163,11 @@ function SummaryCard({
           </ResponsiveContainer>
         </div>
         <p className="mt-1 text-right text-xs text-[var(--color-muted)]">
-          {chartUnit} · km
+          {chartUnit} km
         </p>
       </div>
       {period === 'day' && (
-        <div className="mt-4 space-y-2 border-t border-[var(--color-border)] pt-4">
+        <div className="mt-4 space-y-2 border-t-[0.5px] border-[var(--color-border)] pt-4">
           {activities.map((a) => (
             <button
               key={a.run_id}
@@ -175,7 +175,7 @@ function SummaryCard({
               onClick={() => onSelectActivity(a)}
             >
               <span>
-                {a.start_date_local.slice(11, 16)} · {a.name}
+                {a.start_date_local.slice(11, 16)} {a.name}
               </span>
               <span className="shrink-0 text-[var(--color-accent)]">
                 {number(a.distance / 1000)} km ↗
@@ -244,21 +244,21 @@ export function SummaryPage({
     ['life', 'Life'],
   ];
   const pillBase =
-    'rounded-full px-3 py-1.5 text-xs font-medium transition-colors';
+    'rounded-full px-3 py-1.5 text-xs font-medium';
   const pillOff =
     'bg-[var(--color-border)] text-[var(--color-muted)] hover:text-[var(--color-text)]';
   const pillOn = 'bg-[var(--color-accent)] text-[var(--color-on-accent)]';
   return (
     <main className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold">{t('summary')}</h1>
+        <h1 className="text-[28px] font-semibold">{t('summary')}</h1>
         <p className="mt-2 text-sm text-[var(--color-muted)]">
           {zh
             ? '按时间回看每一段运动历程。'
             : 'Your activity history, one period at a time.'}
         </p>
       </div>
-      <div className="mb-6 space-y-3 rounded-2xl border border-[var(--color-border)] bg-[var(--color-card)] p-4 sm:p-5">
+      <div className="mb-6 space-y-3 rounded-2xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-4 sm:p-5">
         <div
           role="group"
           aria-label={zh ? '运动类型' : 'Sport'}
@@ -287,7 +287,7 @@ export function SummaryPage({
               }}
               className={`${pillBase} ${sport === s ? pillOn : pillOff}`}
             >
-              {sportLabel(s, locale)} · {stat.count} 次 ·{' '}
+              {sportLabel(s, locale)} {stat.count} 次 ·{' '}
               {Math.round(stat.km)} km
             </button>
           ))}
@@ -329,7 +329,7 @@ export function SummaryPage({
         <div
           role="group"
           aria-label={zh ? '汇总周期' : 'Summary period'}
-          className="flex gap-1 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-1"
+          className="flex gap-1 rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-1"
         >
           {periods.map(([value, label]) => (
             <button

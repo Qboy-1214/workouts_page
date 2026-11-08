@@ -76,8 +76,8 @@ const TrackThumb = memo(function TrackThumb({
     <button
       type="button"
       aria-pressed={selected}
-      aria-label={`${activity.start_date_local.slice(0, 16)} · ${activity.name} · ${(activity.distance / 1000).toFixed(1)} km`}
-      className={`track-thumb group relative cursor-pointer rounded transition-all ${selected ? 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-[var(--color-bg)]' : ''}`}
+      aria-label={`${activity.start_date_local.slice(0, 16)} ${activity.name} ${(activity.distance / 1000).toFixed(1)} km`}
+      className={`track-thumb group relative cursor-pointer rounded ${selected ? 'ring-2 ring-[var(--color-accent)] ring-offset-1 ring-offset-[var(--color-bg)]' : ''}`}
       onClick={() => onClick(activity)}
       title={`${activity.name} — ${(activity.distance / 1000).toFixed(1)} km`}
     >
@@ -85,7 +85,7 @@ const TrackThumb = memo(function TrackThumb({
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
-        className={`transition-opacity ${selected ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}
+        className={`${selected ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}
       >
         <polyline
           points={points}
@@ -269,7 +269,7 @@ export function TracksPage({
       <div className="mb-5 flex items-center gap-4">
         <button
           onClick={onBack}
-          className="flex shrink-0 items-center gap-1.5 text-sm text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)]"
+          className="flex shrink-0 items-center gap-1.5 text-sm text-[var(--color-muted)] hover:text-[var(--color-text)]"
         >
           <svg
             className="h-4 w-4"
@@ -286,7 +286,7 @@ export function TracksPage({
           </svg>
           {locale === 'zh' ? '返回' : 'Back'}
         </button>
-        <h1 className="shrink-0 text-lg font-bold">
+        <h1 className="shrink-0 text-xl font-bold">
           {locale === 'zh' ? '轨迹墙' : 'Track Wall'}
         </h1>
       </div>
@@ -298,7 +298,7 @@ export function TracksPage({
           className="flex scroll-mt-28 flex-col gap-4 lg:sticky lg:top-24"
         >
           {/* Stats card */}
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4">
+          <div className="rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-4">
             <p className="mb-3 text-[10px] tracking-wider text-[var(--color-muted)] uppercase">
               {selectedYear ?? (locale === 'zh' ? '全部' : 'Total')}
             </p>
@@ -307,7 +307,7 @@ export function TracksPage({
                 <p className="text-[10px] tracking-wider text-[var(--color-muted)] uppercase">
                   {locale === 'zh' ? '活动' : 'Activities'}
                 </p>
-                <p className="font-mono text-2xl font-bold text-[var(--color-accent)]">
+                <p className="font-mono text-[28px] font-bold text-[var(--color-accent)]">
                   {base.length}
                 </p>
               </div>
@@ -315,7 +315,7 @@ export function TracksPage({
                 <p className="text-[10px] tracking-wider text-[var(--color-muted)] uppercase">
                   {locale === 'zh' ? '距离' : 'Distance'}
                 </p>
-                <p className="font-mono text-2xl font-bold">
+                <p className="font-mono text-[28px] font-bold">
                   {formatDistance(totalDist)}{' '}
                   <span className="text-sm font-normal text-[var(--color-muted)]">
                     km
@@ -326,7 +326,7 @@ export function TracksPage({
                 <p className="text-[10px] tracking-wider text-[var(--color-muted)] uppercase">
                   {locale === 'zh' ? '时间' : 'Time'}
                 </p>
-                <p className="font-mono text-lg font-bold">
+                <p className="font-mono text-xl font-bold">
                   {Math.floor(totalTime / 3600)}h{' '}
                   {Math.floor((totalTime % 3600) / 60)}m
                 </p>
@@ -336,7 +336,7 @@ export function TracksPage({
                   <p className="text-[10px] tracking-wider text-[var(--color-muted)] uppercase">
                     {locale === 'zh' ? '均配速' : 'Avg Pace'}
                   </p>
-                  <p className="font-mono text-lg font-bold">
+                  <p className="font-mono text-xl font-bold">
                     {formatPace(avgPace)}
                   </p>
                 </div>
@@ -346,7 +346,7 @@ export function TracksPage({
 
           {/* Activity detail — only when a single track is selected */}
           {selectedActivity && (
-            <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3">
+            <div className="rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] px-4 py-3">
               <div className="mb-2 flex items-center justify-between gap-2">
                 <p className="text-[10px] tracking-wider text-[var(--color-muted)] uppercase">
                   {locale === 'zh' ? '已选记录' : 'Selected'}
@@ -359,7 +359,7 @@ export function TracksPage({
                     setSelectedActivity(null);
                     onSelectActivity?.(null);
                   }}
-                  className="text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)]"
+                  className="text-[var(--color-muted)] hover:text-[var(--color-text)]"
                 >
                   <svg
                     className="h-3.5 w-3.5"
@@ -394,7 +394,7 @@ export function TracksPage({
                   <p className="text-[9px] tracking-wider text-[var(--color-muted)] uppercase">
                     {locale === 'zh' ? '距离' : 'Distance'}
                   </p>
-                  <p className="font-mono text-base leading-tight font-bold">
+                  <p className="font-mono text-sm leading-tight font-bold">
                     {(selectedActivity.distance / 1000).toFixed(2)}{' '}
                     <span className="text-[10px] font-normal text-[var(--color-muted)]">
                       km
@@ -405,7 +405,7 @@ export function TracksPage({
                   <p className="text-[9px] tracking-wider text-[var(--color-muted)] uppercase">
                     {locale === 'zh' ? '时间' : 'Time'}
                   </p>
-                  <p className="font-mono text-base leading-tight font-bold">
+                  <p className="font-mono text-sm leading-tight font-bold">
                     {selectedDurationLabel}
                   </p>
                 </div>
@@ -414,7 +414,7 @@ export function TracksPage({
                     <p className="text-[9px] tracking-wider text-[var(--color-muted)] uppercase">
                       {locale === 'zh' ? '配速' : 'Pace'}
                     </p>
-                    <p className="font-mono text-base leading-tight font-bold">
+                    <p className="font-mono text-sm leading-tight font-bold">
                       {formatPace(selectedActivity.average_speed)}{' '}
                       <span className="text-[10px] font-normal text-[var(--color-muted)]">
                         /km
@@ -428,7 +428,7 @@ export function TracksPage({
                       <p className="text-[9px] tracking-wider text-[var(--color-muted)] uppercase">
                         {locale === 'zh' ? '爬升' : 'Elev'}
                       </p>
-                      <p className="font-mono text-base leading-tight font-bold">
+                      <p className="font-mono text-sm leading-tight font-bold">
                         {Math.round(selectedActivity.elevation_gain)}{' '}
                         <span className="text-[10px] font-normal text-[var(--color-muted)]">
                           m
@@ -442,7 +442,7 @@ export function TracksPage({
                       <p className="text-[9px] tracking-wider text-[var(--color-muted)] uppercase">
                         {locale === 'zh' ? '心率' : 'HR'}
                       </p>
-                      <p className="font-mono text-base leading-tight font-bold">
+                      <p className="font-mono text-sm leading-tight font-bold">
                         {Math.round(selectedActivity.average_heartrate)}{' '}
                         <span className="text-[10px] font-normal text-[var(--color-muted)]">
                           bpm
@@ -470,16 +470,16 @@ export function TracksPage({
         <div className="min-w-0">
           <div
             ref={captureRef}
-            className="rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+            className="rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-4"
           >
             {/* Year pills + sport filter */}
-            <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-[var(--color-border)] pb-3">
+            <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b-[0.5px] border-[var(--color-border)] pb-3">
               {totalYearPages > 1 && (
                 <button
                   aria-label={locale === 'zh' ? '较新的年份' : 'Newer years'}
                   onClick={() => setYearPage((p) => Math.max(0, p - 1))}
                   disabled={yearPage === 0}
-                  className="px-1 text-base leading-none text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)] disabled:opacity-30"
+                  className="px-1 text-sm leading-none text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-30"
                 >
                   ‹
                 </button>
@@ -520,7 +520,7 @@ export function TracksPage({
                   }
                   aria-label={locale === 'zh' ? '较早的年份' : 'Older years'}
                   disabled={yearPage === totalYearPages - 1}
-                  className="px-1 text-base leading-none text-[var(--color-muted)] transition-colors hover:text-[var(--color-text)] disabled:opacity-30"
+                  className="px-1 text-sm leading-none text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-30"
                 >
                   ›
                 </button>
@@ -590,7 +590,7 @@ export function TracksPage({
                   }}
                   data-export-hidden
                   disabled={exporting || clustering || !clusteredTracks.length}
-                  className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-muted)] transition-all hover:text-[var(--color-text)] disabled:opacity-50"
+                  className="flex h-6 w-6 items-center justify-center rounded text-[var(--color-muted)] hover:text-[var(--color-text)] disabled:opacity-50"
                   title={locale === 'zh' ? '导出图片' : 'Export as image'}
                 >
                   {exporting ? (
@@ -680,7 +680,7 @@ export function TracksPage({
 
             {/* Legend + sort */}
             {!clustering && clusteredTracks.length > 0 && (
-              <div className="mt-4 flex flex-wrap items-center gap-4 border-t border-[var(--color-border)] pt-3 text-xs text-[var(--color-muted)]">
+              <div className="mt-4 flex flex-wrap items-center gap-4 border-t-[0.5px] border-[var(--color-border)] pt-3 text-xs text-[var(--color-muted)]">
                 {sportFilter === null || sportFilter === 'Run' ? (
                   <>
                     <span className="flex items-center gap-1.5">
@@ -704,7 +704,7 @@ export function TracksPage({
                   <button
                     aria-pressed={sortBy === 'date'}
                     onClick={() => setSortBy('date')}
-                    className={`transition-colors ${sortBy === 'date' ? 'font-medium text-[var(--color-text)]' : 'hover:text-[var(--color-text)]'}`}
+                    className={`${sortBy === 'date' ? 'font-medium text-[var(--color-text)]' : 'hover:text-[var(--color-text)]'}`}
                   >
                     {locale === 'zh' ? '时间' : 'Date'}
                   </button>
@@ -712,7 +712,7 @@ export function TracksPage({
                   <button
                     aria-pressed={sortBy === 'distance'}
                     onClick={() => setSortBy('distance')}
-                    className={`transition-colors ${sortBy === 'distance' ? 'font-medium text-[var(--color-text)]' : 'hover:text-[var(--color-text)]'}`}
+                    className={`${sortBy === 'distance' ? 'font-medium text-[var(--color-text)]' : 'hover:text-[var(--color-text)]'}`}
                   >
                     {locale === 'zh' ? '距离' : 'Dist'}
                   </button>

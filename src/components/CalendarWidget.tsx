@@ -82,10 +82,10 @@ export function CalendarWidget({
   return (
     <section
       aria-label={zh ? '活动日历' : 'Activity calendar'}
-      className="w-full min-w-0 rounded-xl border border-[var(--color-border)] bg-[var(--color-card)] p-4"
+      className="w-full min-w-0 rounded-xl border-[0.5px] border-[var(--color-border)] bg-[var(--color-card)] p-4"
     >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold">{monthLabel}</h2>
+        <h2 className="text-sm font-semibold">{monthLabel}</h2>
         <div className="flex items-center gap-1">
           <button
             className="rounded px-2 text-sm"
@@ -144,7 +144,7 @@ export function CalendarWidget({
               type="button"
               disabled={!list.length}
               aria-pressed={day === number}
-              aria-label={`${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(number).padStart(2, '0')} · ${list.length} ${zh ? '次活动' : 'activities'} · ${km.toFixed(1)} km`}
+              aria-label={`${year}-${String(monthIndex + 1).padStart(2, '0')}-${String(number).padStart(2, '0')} ${list.length} ${zh ? '次活动' : 'activities'} ${km.toFixed(1)} km`}
               className={`calendar-day relative flex h-9 flex-col items-center justify-center rounded-md text-xs ${list.length ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)] hover:bg-[var(--color-accent)]/30' : 'text-[var(--color-muted)]'} ${day === number ? 'ring-2 ring-[var(--color-accent)]' : ''}`}
               onClick={() => {
                 setDay(number);
@@ -162,7 +162,7 @@ export function CalendarWidget({
         })}
       </div>
       {day !== null && dayActivities.length > 0 && (
-        <div className="mt-3 space-y-1 border-t border-[var(--color-border)] pt-3">
+        <div className="mt-3 space-y-1 border-t-[0.5px] border-[var(--color-border)] pt-3">
           <p className="mb-2 text-xs text-[var(--color-muted)]">
             {monthIndex + 1}/{day} ·{' '}
             {zh ? '选择活动查看路线' : 'Select an activity to view its route'}
@@ -175,7 +175,7 @@ export function CalendarWidget({
               onClick={() => onSelectActivity(activity)}
             >
               <span className="min-w-0 truncate">
-                {activity.start_date_local.slice(11, 16)} · {activity.name}
+                {activity.start_date_local.slice(11, 16)} {activity.name}
               </span>
               <span className="shrink-0 font-mono">
                 {(activity.distance / 1000).toFixed(1)} km

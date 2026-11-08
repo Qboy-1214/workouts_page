@@ -137,10 +137,10 @@ export function RouteMapCanvas({
             'match',
             ['get', 'type'],
             'Run',
-            '#f97316',
+            'var(--orange-9)',
             'Ride',
-            '#3b82f6',
-            '#4dd2ff',
+            'var(--blue-9)',
+            'var(--cyan-9)',
           ],
         },
       });
@@ -259,7 +259,7 @@ export function RouteMapCanvas({
     >
       <div className="route-map-header">
         <div className="min-w-0">
-          <h2 className="text-base font-semibold">
+          <h2 className="text-sm font-semibold">
             {zh ? '路线地图' : 'Route map'}
           </h2>
           <p
@@ -267,7 +267,7 @@ export function RouteMapCanvas({
             title={selectedActivity?.name}
           >
             {selectedActivity
-              ? `${selectedActivity.name} · ${(selectedActivity.distance / 1000).toFixed(1)} km`
+              ? `${selectedActivity.name} ${(selectedActivity.distance / 1000).toFixed(1)} km`
               : `${routes.length.toLocaleString()} ${zh ? '条轨迹' : 'routes'}`}
           </p>
         </div>
@@ -317,11 +317,9 @@ export function RouteMapCanvas({
               : 'Basemap failed to load'
             : status === 'loading'
               ? zh
-                ? '正在加载地图…'
-                : 'Loading map…'
-              : zh
-                ? '底图 · OpenFreeMap'
-                : 'Basemap · OpenFreeMap'}
+                ? '正在加载地图'
+                : 'Loading map'
+              : ''}
         </span>
         {status === 'error' && (
           <button

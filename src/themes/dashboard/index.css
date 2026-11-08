@@ -1,35 +1,49 @@
+/* Radix UI Colors —— 灰阶与各运动色阶（浅/深自动跟随 .dark） */
+@import '@radix-ui/colors/slate.css';
+@import '@radix-ui/colors/slate-dark.css';
+@import '@radix-ui/colors/lime.css';
+@import '@radix-ui/colors/lime-dark.css';
+@import '@radix-ui/colors/sky.css';
+@import '@radix-ui/colors/sky-dark.css';
+@import '@radix-ui/colors/orange.css';
+@import '@radix-ui/colors/orange-dark.css';
+@import '@radix-ui/colors/blue.css';
+@import '@radix-ui/colors/blue-dark.css';
+@import '@radix-ui/colors/grass.css';
+@import '@radix-ui/colors/grass-dark.css';
+@import '@radix-ui/colors/pink.css';
+@import '@radix-ui/colors/pink-dark.css';
+@import '@radix-ui/colors/cyan.css';
+@import '@radix-ui/colors/cyan-dark.css';
+
 @import 'tailwindcss';
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* 语义色全部映射到 Radix 色阶，遵循其使用规范：
+   1 = 页面背景  2 = 卡片  6 = 低对比边框  11 = 次要文字  12 = 主要文字
+   9 = 实色按钮/高亮  4-10 = 数据热阶 */
 @theme {
-  --color-bg: #f5f5f5;
-  --color-card: #ffffff;
-  --color-border: #d4d4d4;
-  --color-text: #1f2328;
-  --color-muted: #626262;
-  --color-run: #f97316;
-  --color-on-accent: #ffffff;
-  --color-all: #0c4a6e;
+  --color-bg: var(--slate-3);
+  --color-card: var(--slate-2);
+  --color-border: var(--slate-6);
+  --color-text: var(--slate-12);
+  --color-muted: var(--slate-11);
+  --color-run: var(--orange-9);
+  --color-all: var(--sky-12);
   --color-accent: var(--color-all);
+  --color-on-accent: #ffffff;
 }
 
 .dark {
-  --color-all: #ceff00;
-  --color-on-accent: #171717;
-  --color-bg: #171717;
-  --color-card: #202020;
-  --color-border: #383838;
-  --color-text: #ededed;
-  --color-muted: #a3a3a3;
-}
-
-[data-filter='all'] {
-  --color-accent: var(--color-all);
-}
-[data-filter='Run'] {
-  --color-accent: #f97316;
-  --color-on-accent: #171717;
+  --color-all: var(--lime-9);
+  /* 亮色 lime-9 上使用深色文字（Radix 对亮色实色的建议） */
+  --color-on-accent: var(--slate-1);
+  --color-bg: var(--slate-1);
+  --color-card: var(--slate-2);
+  --color-border: var(--slate-6);
+  --color-text: var(--slate-12);
+  --color-muted: var(--slate-11);
 }
 
 body {
@@ -63,6 +77,14 @@ body {
 }
 .dashboard header button {
   white-space: nowrap;
+}
+/* 统一的过渡：仅颜色类属性，ease-out 250ms */
+.dashboard button,
+.dashboard [role='button'] {
+  transition:
+    color 250ms ease-out,
+    background-color 250ms ease-out,
+    border-color 250ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
   .dashboard *,

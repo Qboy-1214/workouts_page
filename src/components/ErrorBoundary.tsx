@@ -44,7 +44,7 @@ export class ErrorBoundary extends Component<Props, State> {
           }}
         >
           <p
-            className="text-base font-medium"
+            className="text-sm font-medium"
             style={{ color: 'var(--color-text, #e6edf3)' }}
           >
             Failed to load activities
