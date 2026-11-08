@@ -243,13 +243,6 @@ export function SummaryPage({
     ['day', zh ? '日' : 'Day'],
     ['life', 'Life'],
   ];
-  const sportStats = useMemo(
-    () =>
-      [...Object.entries(sportStatsRaw(activities))].sort(
-        (x, y) => y[1].count - x[1].count
-      ),
-    [activities]
-  );
   const pillBase =
     'rounded-full px-3 py-1.5 text-xs font-medium transition-colors';
   const pillOff =
