@@ -1,10 +1,31 @@
 import process from 'node:process';
+import fs from 'node:fs';
 import path from 'node:path';
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import yaml from '@modyfi/vite-plugin-yaml';
 import svgr from 'vite-plugin-svgr';
+
+// 把活动数据同步到固定路径 /data/activities.json，
+// 作为稳定的数据接口（URL 不随构建 hash 变化）。
+function activitiesDataPlugin() {
+  return {
+    name: 'emit-activities-data',
+    apply: 'build' as const,
+    generateBundle() {
+      const source = fs.readFileSync(
+        path.resolve(__dirname, 'src/static/activities.json'),
+        'utf-8',
+      );
+      this.emitFile({
+        type: 'asset',
+        fileName: 'data/activities.json',
+        source,
+      });
+    },
+  };
+}
 
 const colorClassMapping: { [key: string]: string } = {
   '#1a1a1a': 'svg-color-bg',
@@ -18,6 +39,7 @@ const colorClassMapping: { [key: string]: string } = {
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
+    activitiesDataPlugin(),
     react(),
     tailwindcss(),
     yaml(),

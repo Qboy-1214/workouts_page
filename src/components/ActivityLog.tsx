@@ -75,6 +75,55 @@ export function ActivityLog({
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
   const pageData = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
+  const downloadActivitiesCsv = () => {
+    // 全量活动数据（不受当前 tab/筛选影响）
+    const esc = (value: unknown) => {
+      const s = String(value ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = [
+      '日期',
+      '类型',
+      '名称',
+      '距离(km)',
+      '时长',
+      '平均心率',
+      '平均速度(m/s)',
+      '累计爬升(m)',
+      '地点',
+      '来源',
+      '活动ID',
+    ];
+    const lines = activities
+      .slice()
+      .sort((x, y) => y.start_date_local.localeCompare(x.start_date_local))
+      .map((a) =>
+        [
+          esc(a.start_date_local.slice(0, 16).replace('T', ' ')),
+          esc(a.type),
+          esc(a.name || ''),
+          esc((a.distance / 1000).toFixed(2)),
+          esc(a.moving_time),
+          esc(a.average_heartrate ?? ''),
+          esc(a.average_speed ?? ''),
+          esc(a.elevation_gain ?? ''),
+          esc(a.location_country ?? ''),
+          esc(a.source ?? ''),
+          esc(String(a.run_id)),
+        ].join(',')
+      );
+    // BOM 保证 Excel 打开中文不乱码
+    const blob = new Blob(['\uFEFF' + [header.map(esc).join(','), ...lines].join('\r\n')], {
+      type: 'text/csv;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `fitpage-activities-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div
       aria-label={t('activityLog')}
@@ -84,11 +133,24 @@ export function ActivityLog({
       {/* Header */}
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-xl font-bold">{t('activityLog')}</h2>
-        <span className="text-sm text-[var(--color-muted)]">
-          {t('showing')} {sorted.length ? page * PAGE_SIZE + 1 : 0}-
-          {Math.min((page + 1) * PAGE_SIZE, sorted.length)} {t('of')}{' '}
-          {sorted.length}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-[var(--color-muted)]">
+            {t('showing')} {sorted.length ? page * PAGE_SIZE + 1 : 0}-
+            {Math.min((page + 1) * PAGE_SIZE, sorted.length)} {t('of')}{' '}
+            {sorted.length}
+          </span>
+          <button
+            onClick={downloadActivitiesCsv}
+            title={
+              locale === 'zh'
+                ? '下载全部活动数据（CSV，含轨迹外所有字段）'
+                : 'Download all activities as CSV'
+            }
+            className="rounded-full px-2.5 py-1 text-xs font-medium text-[var(--color-muted)] hover:text-[var(--color-text)]"
+          >
+            ⬇ {locale === 'zh' ? '下载数据' : 'Download'}
+          </button>
+        </div>
       </div>
 
       {/* 室外 / 室内 tabs */}
