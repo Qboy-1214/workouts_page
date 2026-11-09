@@ -186,6 +186,7 @@ function Dashboard() {
                 />
                 <ActivityLog
                   activities={filtered}
+                  allActivities={activities}
                   years={years}
                   year={year}
                   setYear={(value) => {

@@ -6,6 +6,8 @@ import { useLocale } from '../hooks/useLocale';
 
 interface ActivityLogProps {
   activities: Activity[];
+  /** 未经过滤的全量数据——下载功能始终使用它，不受年份/场地联动影响 */
+  allActivities?: Activity[];
   years: number[];
   year: number | null;
   setYear: (y: number | null) => void;
@@ -20,6 +22,7 @@ type DistanceFilter = 'all' | '10' | '20' | '40';
 
 export function ActivityLog({
   activities,
+  allActivities,
   years,
   year,
   setYear,
@@ -76,7 +79,8 @@ export function ActivityLog({
   const pageData = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const downloadActivitiesCsv = () => {
-    // 全量活动数据（不受当前 tab/筛选影响）
+    // 始终下载未过滤的全量数据（页面上的年份/月份联动不影响下载范围）
+    const full = allActivities ?? activities;
     const esc = (value: unknown) => {
       const s = String(value ?? '');
       return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
@@ -94,7 +98,7 @@ export function ActivityLog({
       '来源',
       '活动ID',
     ];
-    const lines = activities
+    const lines = full
       .slice()
       .sort((x, y) => y.start_date_local.localeCompare(x.start_date_local))
       .map((a) =>
