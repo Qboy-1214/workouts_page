@@ -154,6 +154,18 @@ export function ActivityLog({
           >
             ⬇ {locale === 'zh' ? '下载数据' : 'Download'}
           </button>
+          <a
+            href={`${import.meta.env.BASE_URL}data/gpx/all.zip`}
+            download
+            title={
+              locale === 'zh'
+                ? '下载全部 GPS 轨迹打包（GPX）'
+                : 'Download all GPS tracks as GPX'
+            }
+            className="rounded-full px-2.5 py-1 text-xs font-medium text-[var(--color-muted)] hover:text-[var(--color-text)]"
+          >
+            ⬇ {locale === 'zh' ? 'GPX 打包' : 'GPX pack'}
+          </a>
         </div>
       </div>
 
