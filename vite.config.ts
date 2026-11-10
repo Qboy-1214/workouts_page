@@ -30,7 +30,13 @@ function activitiesDataPlugin() {
       .replace(/"/g, '&quot;');
 
   // 由轨迹线生成 GPX：时间为起点+匀速插值（轨迹线本身不含逐点时间）
-  function buildGpx(name: string, coords: [number, number][], startDateLocal: string, movingSeconds: number): string {
+  function buildGpx(
+    name: string,
+    coords: [number, number][],
+    startDateLocal: string,
+    movingSeconds: number,
+    elevations?: number[],
+  ): string {
     // start_date_local 有两种格式：'2026-11-06 08:28'（无时区）与
     // '2024-07-12 07:11:55+00:00'（带时区）——统一成合法 ISO 再解析
     const iso = startDateLocal.includes('T')
@@ -47,7 +53,24 @@ function activitiesDataPlugin() {
         const t = new Date(start.getTime() + step * 1000 * i)
           .toISOString()
           .replace(/\.\d{3}Z$/, 'Z');
-        return `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}"><time>${t}</time></trkpt>`;
+        // 海拔：把 Strava streams 的采样按位置比例映射到轨迹点上
+        const ele =
+          elevations && elevations.length > 0
+            ? elevations[
+                Math.min(
+                  elevations.length - 1,
+                  Math.round(
+                    (i * (elevations.length - 1)) /
+                      Math.max(coords.length - 1, 1),
+                  ),
+                )
+              ]
+            : null;
+        const eleXml =
+          ele !== null && Number.isFinite(ele)
+            ? `<ele>${ele.toFixed(1)}</ele>`
+            : '';
+        return `      <trkpt lat="${lat.toFixed(6)}" lon="${lon.toFixed(6)}">${eleXml}<time>${t}</time></trkpt>`;
       })
       .join('\n');
     return `<?xml version="1.0" encoding="UTF-8"?>
@@ -74,6 +97,19 @@ ${pts}
         fileName: 'data/activities.json',
         source,
       });
+
+      // 海拔缓存（由 fetch_elevations.py 在同步工作流中抓取并提交）
+      let elevationCache: Record<string, number[]> = {};
+      try {
+        elevationCache = JSON.parse(
+          fs.readFileSync(
+            path.resolve(__dirname, 'run_page/elevation_cache.json'),
+            'utf-8',
+          ),
+        ) as Record<string, number[]>;
+      } catch {
+        elevationCache = {};
+      }
 
       // CSV 版本：字段与页面「下载数据」按钮一致
       const header = [
@@ -204,6 +240,7 @@ ${pts}
                   coords,
                   a.start_date_local,
                   movingSeconds,
+                  elevationCache[String(a.run_id)],
                 ),
               );
               debug.made += 1;
@@ -271,6 +308,7 @@ ${pts}
                 coords,
                 a.start_date_local,
                 movingSeconds,
+                elevationCache[String(a.run_id)],
               ),
             );
           } catch {
@@ -284,6 +322,34 @@ ${pts}
           source: gpxZip,
         });
       }
+
+      // 按月份拆分（YYYY-MM 一组，date_local 的本地月份口径）
+      const byMonth = new Map<
+        string,
+        { start_date_local: string }[]
+      >();
+      for (const a of activities) {
+        const month = a.start_date_local.slice(0, 7);
+        const arr = byMonth.get(month) ?? [];
+        arr.push(a);
+        byMonth.set(month, arr);
+      }
+      for (const [month, arr] of [...byMonth.entries()].sort((x, y) =>
+        x[0].localeCompare(y[0]),
+      )) {
+        this.emitFile({
+          type: 'asset',
+          fileName: `data/months/${month}.json`,
+          source: JSON.stringify(arr, null, 0),
+        });
+      }
+      const monthsIndex = [...byMonth.entries()]
+        .sort((x, y) => x[0].localeCompare(y[0]))
+        .map(([month, arr]) => ({
+          month,
+          count: arr.length,
+          json: `data/months/${month}.json`,
+        }));
 
       // 接口自描述清单
       this.emitFile({
@@ -299,6 +365,7 @@ ${pts}
               activities_csv: 'data/activities.csv',
               gpx_all: 'data/gpx/all.zip',
             },
+            months: monthsIndex,
             types: typeIndex,
           },
           null,

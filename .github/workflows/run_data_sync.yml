@@ -172,6 +172,12 @@ jobs:
           python run_page/strava_sync.py ${{ secrets.STRAVA_CLIENT_ID }} ${{ secrets.STRAVA_CLIENT_SECRET }} ${{ secrets.STRAVA_CLIENT_REFRESH_TOKEN }}
         # If you only want to sync 'type running' add args --only-run, default script is to sync all data (rides and runs).
 
+      # 抓取活动的海拔 stream，缓存进仓库供 GPX 生成使用（首次约 5 分钟，之后只补新活动）
+      - name: Fetch activity elevations
+        continue-on-error: true
+        run: |
+          python run_page/fetch_elevations.py ${{ secrets.STRAVA_CLIENT_ID }} ${{ secrets.STRAVA_CLIENT_SECRET }} ${{ secrets.STRAVA_CLIENT_REFRESH_TOKEN }}
+
       # Strava web sync: uses the strava_remember_token JWT (web endpoints) instead of the
       # OAuth2 API, for when the API application is inactive. --days controls lookback.
       - name: Run sync Strava web script
