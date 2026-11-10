@@ -31,6 +31,8 @@ route.svg
 *.json
 !package.json
 !pnpm-lock.yaml
+!run_page/geocode_cache.json
+!run_page/elevation_cache.json
 
 # Local data and tokens
 *.pkl
