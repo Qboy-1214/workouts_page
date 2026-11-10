@@ -2,7 +2,7 @@ import { memo, useState } from 'react';
 import type { Activity, SportFilter } from '../types';
 import { formatDistance, parseMovingTime } from '../hooks/useActivities';
 import { useLocale } from '../hooks/useLocale';
-import { GOALS, DEFAULT_GOAL } from '../config';
+import { useGoal } from '../core/goalSettings';
 
 interface StatsCardsProps {
   activities: Activity[];
@@ -20,7 +20,7 @@ export const StatsCards = memo(function StatsCards({
   onSelectActivity,
 }: StatsCardsProps) {
   const { t, locale } = useLocale();
-  const goal = GOALS[filter] ?? DEFAULT_GOAL;
+  const goal = useGoal(filter);
   // For Gym, goals are in minutes; for others, goals are in km → convert to meters
   const yearGoalMeters = goal.unit === 'time' ? 0 : goal.yearly * 1000;
   const monthGoalMeters = goal.unit === 'time' ? 0 : goal.monthly * 1000;
