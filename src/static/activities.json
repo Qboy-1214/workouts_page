@@ -7582,5 +7582,21 @@
 "elevation_gain": 5.0,
 "source": "strava",
 "streak": 4
+},
+{
+"run_id": 21150068808,
+"name": "\u7fbd\u6bdb\u7403 with\u5c0f\u5c0f",
+"distance": 0.0,
+"moving_time": "1:51:47",
+"type": "Badminton",
+"start_date": "2026-11-28 05:08:26+00:00",
+"start_date_local": "2026-11-28 13:08:26+00:00",
+"location_country": "",
+"summary_polyline": "",
+"average_heartrate": 131.3,
+"average_speed": 0.0,
+"elevation_gain": 0.0,
+"source": "strava",
+"streak": 1
 }
 ]
